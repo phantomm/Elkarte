@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0
+ * @version 1.0.2
  *
  */
 
@@ -261,7 +261,7 @@ class Scheduled_Task
 		$db = database();
 
 		// First clean out the cache.
-		clean_cache();
+		clean_cache('data');
 
 		// If warning decrement is enabled and we have people who have not had a new warning in 24 hours, lower their warning level.
 		list (, , $modSettings['warning_decrement']) = explode(',', $modSettings['warning_settings']);
@@ -1036,12 +1036,10 @@ class Scheduled_Task
 					SELECT id_report
 					FROM {db_prefix}log_reported
 					WHERE time_started < {int:time_started}
-						AND closed = {int:not_closed}
-						AND ignore_all = {int:not_ignored}',
+						AND closed = {int:closed}',
 					array(
 						'time_started' => $t,
-						'not_closed' => 0,
-						'not_ignored' => 0,
+						'closed' => 1,
 					)
 				);
 				while ($row = $db->fetch_row($result))

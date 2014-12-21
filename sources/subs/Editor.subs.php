@@ -14,7 +14,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0
+ * @version 1.0.2
  *
  */
 
@@ -208,6 +208,9 @@ function create_control_richedit($editorOptions)
 		'locale' => !empty($txt['lang_locale']) ? $txt['lang_locale'] : 'en_US',
 	);
 
+	// Allow addons an easy way to add plugins, initialization objects, etc to the editor control
+	call_integration_hook('integrate_editor_plugins', array($editorOptions['id']));
+
 	// Switch between default images and back... mostly in case you don't have an PersonalMessage template, but do have a Post template.
 	if (isset($settings['use_default_images']) && $settings['use_default_images'] == 'defaults' && isset($settings['default_template']))
 	{
@@ -236,7 +239,7 @@ function create_control_richedit($editorOptions)
 		$bbc_tags['row2'] = array(
 			array('quote', 'code', 'table'),
 			array('bulletlist', 'orderedlist', 'horizontalrule'),
-			array('spoiler', 'footnote'),
+			array('spoiler', 'footnote', 'splittag'),
 			array('image', 'link', 'email'),
 		);
 

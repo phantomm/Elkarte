@@ -9,7 +9,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0
+ * @version 1.0.2
  *
  * This file contains javascript utility functions
  */
@@ -605,59 +605,11 @@ window.setTimeout(function() {elk_sessionKeepAlive();}, 1200000);
  */
 function elk_setThemeOption(option, value, theme, additional_vars)
 {
-	if (additional_vars === null)
+	if (additional_vars === null || typeof(additional_vars) === 'undefined')
 		additional_vars = '';
 
 	var tempImage = new Image();
 	tempImage.src = elk_prepareScriptUrl(elk_scripturl) + 'action=jsoption;var=' + option + ';val=' + value + ';' + elk_session_var + '=' + elk_session_id + additional_vars + (theme === null ? '' : '&th=' + theme) + ';time=' + (new Date().getTime());
-}
-
-/**
- * Resize an avatar with JS
- */
-function elk_avatarResize()
-{
-	var possibleAvatars = document.getElementsByTagName('img');
-
-	for (var i = 0; i < possibleAvatars.length; i++)
-	{
-		var tempAvatars = [],
-			j = 0;
-
-		if (possibleAvatars[i].className !== 'avatar')
-			continue;
-
-		// Image.prototype.avatar = possibleAvatars[i];
-		tempAvatars[j] = new Image();
-		tempAvatars[j].avatar = possibleAvatars[i];
-
-		tempAvatars[j].onload = function()
-		{
-			this.avatar.width = this.width;
-			this.avatar.height = this.height;
-
-			if (elk_avatarMaxWidth !== 0 && this.width > elk_avatarMaxWidth)
-			{
-				this.avatar.height = (elk_avatarMaxWidth * this.height) / this.width;
-				this.avatar.width = elk_avatarMaxWidth;
-			}
-
-			if (elk_avatarMaxHeight !== 0 && this.avatar.height > elk_avatarMaxHeight)
-			{
-				this.avatar.width = (elk_avatarMaxHeight * this.avatar.width) / this.avatar.height;
-				this.avatar.height = elk_avatarMaxHeight;
-			}
-		};
-
-		tempAvatars[j].src = possibleAvatars[i].src;
-		j++;
-	}
-
-	if (typeof(window_oldAvatarOnload) !== 'undefined' && window_oldAvatarOnload)
-	{
-		window_oldAvatarOnload();
-		window_oldAvatarOnload = null;
-	}
 }
 
 /**
@@ -1187,6 +1139,14 @@ function JumpTo(oJumpToOptions)
 	this.showSelect();
 }
 
+// Remove all the options in the select. Method of the JumpTo class.
+JumpTo.prototype.removeAll = function ()
+{
+//	var dropdownList = document.getElementById(this.opt.sContainerId + '_select');
+for (var i = this.dropdownList.options.length; i > 0; i--)
+		this.dropdownList.remove(i - 1);
+}
+
 // Show the initial select box (onload). Method of the JumpTo class.
 JumpTo.prototype.showSelect = function ()
 {
@@ -1205,13 +1165,11 @@ JumpTo.prototype.showSelect = function ()
 // Fill the jump to box with entries. Method of the JumpTo class.
 JumpTo.prototype.fillSelect = function (aBoardsAndCategories)
 {
+	this.removeAll();
 	if ('onbeforeactivate' in document)
 		this.dropdownList.onbeforeactivate = null;
 	else
 		this.dropdownList.onfocus = null;
-
-	if (this.opt.bNoRedirect)
-		this.dropdownList.options[0].disabled = 'disabled';
 
 	// Create a document fragment that'll allowing inserting big parts at once.
 	var oListFragment = document.createDocumentFragment(),
@@ -1224,13 +1182,6 @@ JumpTo.prototype.fillSelect = function (aBoardsAndCategories)
 			sChildLevelPrefix = '',
 			oOption,
 			oText;
-
-		// If we've reached the currently selected board add all items so far.
-		if (!aBoardsAndCategories[i].isCategory && aBoardsAndCategories[i].id === this.opt.iCurBoardId)
-		{
-				this.dropdownList.insertBefore(oOptgroupFragment, this.dropdownList.options[0]);
-				continue;
-		}
 
 		if (aBoardsAndCategories[i].isCategory)
 		{
@@ -1255,6 +1206,9 @@ JumpTo.prototype.fillSelect = function (aBoardsAndCategories)
 		// Applying a category class to this option?
 		if (aBoardsAndCategories[i].isCategory && this.opt.sCatClass)
 			oOption.className = this.opt.sCatClass;
+
+		if (!aBoardsAndCategories[i].isCategory && aBoardsAndCategories[i].id === this.opt.iCurBoardId)
+			oOption.selected = 'selected';
 
 		oOption.appendChild(oText);
 

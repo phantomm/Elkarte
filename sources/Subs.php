@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0
+ * @version 1.0.2
  *
  */
 
@@ -732,7 +732,7 @@ function parse_bbc($message, $smileys = true, $cache_id = '', $parse_tags = arra
 	global $txt, $scripturl, $context, $modSettings, $user_info;
 
 	static $bbc_codes = array(), $itemcodes = array(), $no_autolink_tags = array();
-	static $disabled;
+	static $disabled, $default_disabled, $parse_tag_cache;
 
 	// Don't waste cycles
 	if ($message === '')
@@ -759,18 +759,11 @@ function parse_bbc($message, $smileys = true, $cache_id = '', $parse_tags = arra
 		return $message;
 	}
 
-	// If we are not doing every tag then we don't cache this run.
-	if (!empty($parse_tags) && !empty($bbc_codes))
-	{
-		$temp_bbc = $bbc_codes;
-		$bbc_codes = array();
-	}
-
 	// Allow addons access before entering the main parse_bbc loop
 	call_integration_hook('integrate_pre_parsebbc', array(&$message, &$smileys, &$cache_id, &$parse_tags));
 
 	// Sift out the bbc for a performance improvement.
-	if (empty($bbc_codes) || $message === false || !empty($parse_tags))
+	if (empty($bbc_codes) || $message === false)
 	{
 		if (!empty($modSettings['disabledBBC']))
 		{
@@ -910,7 +903,7 @@ function parse_bbc($message, $smileys = true, $cache_id = '', $parse_tags = arra
 					global $context;
 
 					if (!isset($disabled[\'code\']))
-						$data = str_replace("\t", "<span style=\"white-space: pre;\">\t</span>", $data);
+						$data = str_replace("\t", "<span class=\"tab\">\t</span>", $data);
 					'),
 				'block_level' => true,
 			),
@@ -922,7 +915,7 @@ function parse_bbc($message, $smileys = true, $cache_id = '', $parse_tags = arra
 					global $context;
 
 					if (!isset($disabled[\'code\']))
-						$data[0] = str_replace("\t", "<span style=\"white-space: pre;\">\t</span>", $data[0]);
+						$data[0] = str_replace("\t", "<span class=\"tab\">\t</span>", $data[0]);
 					'),
 				'block_level' => true,
 			),
@@ -986,13 +979,6 @@ function parse_bbc($message, $smileys = true, $cache_id = '', $parse_tags = arra
 				'disabled_after' => ' ($1)',
 			),
 			array(
-				'tag' => 'html',
-				'type' => 'unparsed_content',
-				'content' => '$1',
-				'block_level' => true,
-				'disabled_content' => '$1',
-			),
-			array(
 				'tag' => 'hr',
 				'type' => 'closed',
 				'content' => '<hr />',
@@ -1008,10 +994,10 @@ function parse_bbc($message, $smileys = true, $cache_id = '', $parse_tags = arra
 				'type' => 'unparsed_content',
 				'parameters' => array(
 					'alt' => array('optional' => true),
-					'width' => array('optional' => true, 'value' => '$1px;', 'match' => '(\d+)'),
-					'height' => array('optional' => true, 'value' => '$1px;', 'match' => '(\d+)'),
+					'width' => array('optional' => true, 'value' => 'width:100%;max-width:$1px;', 'match' => '(\d+)'),
+					'height' => array('optional' => true, 'value' => 'max-height:$1px;', 'match' => '(\d+)'),
 				),
-				'content' => '<img src="$1" alt="{alt}" style="width:{width};height:{height}" class="bbc_img resized" />',
+				'content' => '<img src="$1" alt="{alt}" style="{width}{height}" class="bbc_img resized" />',
 				'validate' => create_function('&$tag, &$data, $disabled', '
 					$data = strtr($data, array(\'<br />\' => \'\'));
 					if (strpos($data, \'http://\') !== 0 && strpos($data, \'https://\') !== 0)
@@ -1324,12 +1310,40 @@ function parse_bbc($message, $smileys = true, $cache_id = '', $parse_tags = arra
 		}
 
 		foreach ($codes as $code)
+			$bbc_codes[substr($code['tag'], 0, 1)][] = $code;
+	}
+
+	// If we are not doing every enabled tag then create a cache for this parsing group.
+	if ($parse_tags !== array() && is_array($parse_tags))
+	{
+		$temp_bbc = $bbc_codes;
+		$tags_cache_id = implode(',', $parse_tags);
+
+		if (!isset($default_disabled))
+			$default_disabled = isset($disabled) ? $disabled : array();
+
+		// Already cached, use it, otherwise create it
+		if (isset($parse_tag_cache[$tags_cache_id]))
+			list ($bbc_codes, $disabled) = $parse_tag_cache[$tags_cache_id];
+		else
 		{
-			// If we are not doing every tag only do ones we are interested in.
-			if (empty($parse_tags) || in_array($code['tag'], $parse_tags))
-				$bbc_codes[substr($code['tag'], 0, 1)][] = $code;
+			foreach ($bbc_codes as $key_bbc => $bbc)
+			{
+				foreach ($bbc as $key_code => $code)
+				{
+					if (!in_array($code['tag'], $parse_tags))
+					{
+						$disabled[$code['tag']] = true;
+						unset($bbc_codes[$key_bbc][$key_code]);
+					}
+				}
+			}
+
+			$parse_tag_cache[$tags_cache_id] = array($bbc_codes, $disabled);
 		}
 	}
+	elseif (isset($default_disabled))
+		$disabled = $default_disabled;
 
 	// Shall we take the time to cache this?
 	if ($cache_id != '' && !empty($modSettings['cache_enable']) && (($modSettings['cache_enable'] >= 2 && isset($message[1000])) || isset($message[2400])) && empty($parse_tags))
@@ -2326,9 +2340,9 @@ function redirectexit($setLocation = '', $refresh = false)
 	if (!empty($modSettings['queryless_urls']) && (empty($context['server']['is_cgi']) || ini_get('cgi.fix_pathinfo') == 1 || @get_cfg_var('cgi.fix_pathinfo') == 1) && (!empty($context['server']['is_apache']) || !empty($context['server']['is_lighttpd']) || !empty($context['server']['is_litespeed'])))
 	{
 		if (defined('SID') && SID != '')
-			$setLocation = preg_replace_callback('~^' . preg_quote($scripturl, '/') . '\?(?:' . SID . '(?:;|&|&amp;))((?:board|topic)=[^#]+?)(#[^"]*?)?$~', 'redirectexit_callback', $setLocation);
+			$setLocation = preg_replace_callback('~^' . preg_quote($scripturl, '~') . '\?(?:' . SID . '(?:;|&|&amp;))((?:board|topic)=[^#]+?)(#[^"]*?)?$~', 'redirectexit_callback', $setLocation);
 		else
-			$setLocation = preg_replace_callback('~^' . preg_quote($scripturl, '/') . '\?((?:board|topic)=[^#"]+?)(#[^"]*?)?$~', 'redirectexit_callback', $setLocation);
+			$setLocation = preg_replace_callback('~^' . preg_quote($scripturl, '~') . '\?((?:board|topic)=[^#"]+?)(#[^"]*?)?$~', 'redirectexit_callback', $setLocation);
 	}
 
 	// Maybe integrations want to change where we are heading?
@@ -2547,18 +2561,15 @@ function setupThemeContext($forceload = false)
 		{
 			$context['user']['avatar']['href'] = $user_info['avatar']['url'];
 
-			if ($modSettings['avatar_action_too_large'] == 'option_html_resize' || $modSettings['avatar_action_too_large'] == 'option_js_resize')
-			{
-				if (!empty($modSettings['avatar_max_width_external']))
-					$context['user']['avatar']['width'] = $modSettings['avatar_max_width_external'];
+			if (!empty($modSettings['avatar_max_width']))
+				$context['user']['avatar']['width'] = $modSettings['avatar_max_width'];
 
-				if (!empty($modSettings['avatar_max_height_external']))
-					$context['user']['avatar']['height'] = $modSettings['avatar_max_height_external'];
-			}
+			if (!empty($modSettings['avatar_max_height']))
+				$context['user']['avatar']['height'] = $modSettings['avatar_max_height'];
 		}
 		// Gravatars URL.
 		elseif ($user_info['avatar']['url'] === 'gravatar')
-			$context['user']['avatar']['href'] = '//www.gravatar.com/avatar/' . md5(strtolower($user_settings['email_address'])) . 'd=' . $modSettings['avatar_max_height_external'] . (!empty($modSettings['gravatar_rating']) ? ('&amp;r=' . $modSettings['gravatar_rating']) : '');
+			$context['user']['avatar']['href'] = '//www.gravatar.com/avatar/' . md5(strtolower($user_settings['email_address'])) . 'd=' . $modSettings['avatar_max_height'] . (!empty($modSettings['gravatar_rating']) ? ('&amp;r=' . $modSettings['gravatar_rating']) : '');
 		// Otherwise we assume it's server stored?
 		elseif ($user_info['avatar']['url'] !== '')
 			$context['user']['avatar']['href'] = $modSettings['avatar_url'] . '/' . htmlspecialchars($user_info['avatar']['url']);
@@ -2615,17 +2626,6 @@ function setupThemeContext($forceload = false)
 				icon: elk_images_url + \'/im_sm_newmsg.png\'
 			});
 		});', true);
-
-	// Resize avatars the fancy, but non-GD requiring way.
-	if ($modSettings['avatar_action_too_large'] == 'option_js_resize' && (!empty($modSettings['avatar_max_width_external']) || !empty($modSettings['avatar_max_height_external'])))
-	{
-		// @todo Move this over to script.js?
-		addInlineJavascript('
-		var elk_avatarMaxWidth = ' . (int) $modSettings['avatar_max_width_external'] . ',
-			elk_avatarMaxHeight = ' . (int) $modSettings['avatar_max_height_external'] . ';' . (!isBrowser('is_ie8') ? '
-		window.addEventListener("load", elk_avatarResize, false);' : '
-		window.attachEvent("load", elk_avatarResize);'), true);
-	}
 
 	// This looks weird, but it's because BoardIndex.controller.php references the variable.
 	$context['common_stats']['latest_member'] = array(
@@ -2886,6 +2886,8 @@ function template_javascript($do_defered = false)
 			$combiner = new Site_Combiner(CACHEDIR, $boardurl . '/cache');
 			$combine_name = $combiner->site_js_combine($context['javascript_files'], $do_defered);
 
+			call_integration_hook('post_javascript_combine', array(&$combine_name, $combiner));
+
 			if (!empty($combine_name))
 				echo '
 	<script src="', $combine_name, '" id="jscombined', $do_defered ? 'bottom' : 'top', '"></script>';
@@ -2973,6 +2975,8 @@ function template_css()
 			$combiner = new Site_Combiner(CACHEDIR, $boardurl . '/cache');
 			$combine_name = $combiner->site_css_combine($context['css_files']);
 
+			call_integration_hook('post_css_combine', array(&$combine_name, $combiner));
+
 			if (!empty($combine_name))
 				echo '
 	<link rel="stylesheet" href="', $combine_name, '" id="csscombined" />';
@@ -3014,6 +3018,11 @@ function template_admin_warning_above()
 	{
 		$context['security_controls_ban']['type'] = 'serious';
 		template_show_error('security_controls_ban');
+	}
+
+	if (!empty($context['new_version_updates']))
+	{
+		template_show_error('new_version_updates');
 	}
 
 	// Any special notices to remind the admin about?
@@ -4266,6 +4275,7 @@ function replaceBasicActionUrl($string)
 		$find = array(
 			'{forum_name}',
 			'{forum_name_html_safe}',
+			'{forum_name_html_unsafe}',
 			'{script_url}',
 			'{board_url}',
 			'{login_url}',
@@ -4285,6 +4295,7 @@ function replaceBasicActionUrl($string)
 		$replace = array(
 			$context['forum_name'],
 			$context['forum_name_html_safe'],
+			un_htmlspecialchars($context['forum_name_html_safe']),
 			$scripturl,
 			$boardurl,
 			$scripturl . '?action=login',
@@ -4333,4 +4344,21 @@ function response_prefix()
 	}
 
 	return $response_prefix;
+}
+
+/**
+ * A very simple function to determine if an email address is "valid" for Elkarte.
+ * A valid email for ElkArte is something that resebles an email (filter_var) and
+ * is less than 255 characters (for database limits)
+ *
+ * @param string $value - The string to evaluate as valid email
+ * @return bool|string - The email if valid, false if not a valid email
+ */
+function isValidEmail($value)
+{
+	$value = trim($value);
+	if (filter_var($value, FILTER_VALIDATE_EMAIL) && Util::strlen($value) < 255)
+		return $value;
+	else
+		return false;
 }

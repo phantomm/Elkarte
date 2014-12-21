@@ -1,5 +1,5 @@
 #### ATTENTION: You do not need to run or use this file!  The install.php script does everything for you!
-#### Install script for PostgreSQL 8.0.1
+#### Install script for PostgreSQL 8.3+
 
 #
 # Create PostgreSQL functions.
@@ -2130,10 +2130,7 @@ INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (0, 'who_view'
 INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (0, 'profile_identity_own');
 INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (0, 'profile_extra_own');
 INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (0, 'profile_remove_own');
-INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (0, 'profile_server_avatar');
-INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (0, 'profile_upload_avatar');
-INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (0, 'profile_remote_avatar');
-INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (0, 'profile_gravatar');
+INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (0, 'profile_set_avatar');
 INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (0, 'send_email_to_members');
 INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (0, 'karma_edit');
 INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (2, 'view_mlist');
@@ -2150,10 +2147,7 @@ INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (2, 'who_view'
 INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (2, 'profile_identity_own');
 INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (2, 'profile_extra_own');
 INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (2, 'profile_remove_own');
-INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (2, 'profile_server_avatar');
-INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (2, 'profile_upload_avatar');
-INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (2, 'profile_remote_avatar');
-INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (2, 'profile_gravatar');
+INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (2, 'profile_set_avatar');
 INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (2, 'send_email_to_members');
 INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (2, 'profile_title_own');
 INSERT INTO {$db_prefix}permissions (id_group, permission) VALUES (2, 'calendar_post');
@@ -2325,7 +2319,7 @@ CREATE SEQUENCE {$db_prefix}postby_emails_filters_seq;
 
 CREATE TABLE {$db_prefix}postby_emails_filters (
   id_filter int default nextval('{$db_prefix}postby_emails_filters_seq'),
-  filter_style char(5) NOT NULL default '',
+  filter_style char(6) NOT NULL default '',
   filter_type varchar(255) NOT NULL default '',
   filter_to varchar(255) NOT NULL default '',
   filter_from varchar(255) NOT NULL default '',
@@ -2494,14 +2488,15 @@ INSERT INTO {$db_prefix}settings (variable, value) VALUES ('banLastUpdated', '0'
 INSERT INTO {$db_prefix}settings (variable, value) VALUES ('smileys_dir', '{BOARDDIR}/smileys');
 INSERT INTO {$db_prefix}settings (variable, value) VALUES ('smileys_url', '{$boardurl}/smileys');
 INSERT INTO {$db_prefix}settings (variable, value) VALUES ('avatar_default', '1');
+INSERT INTO {$db_prefix}settings (variable, value) VALUES ('avatar_stored_enabled', '1');
+INSERT INTO {$db_prefix}settings (variable, value) VALUES ('avatar_external_enabled', '1');
+INSERT INTO {$db_prefix}settings (variable, value) VALUES ('avatar_gravatar_enabled', '1');
+INSERT INTO {$db_prefix}settings (variable, value) VALUES ('avatar_upload_enabled', '1');
 INSERT INTO {$db_prefix}settings (variable, value) VALUES ('avatar_directory', '{BOARDDIR}/avatars');
 INSERT INTO {$db_prefix}settings (variable, value) VALUES ('avatar_url', '{$boardurl}/avatars');
-INSERT INTO {$db_prefix}settings (variable, value) VALUES ('avatar_max_height_external', '65');
-INSERT INTO {$db_prefix}settings (variable, value) VALUES ('avatar_max_width_external', '65');
-INSERT INTO {$db_prefix}settings (variable, value) VALUES ('avatar_action_too_large', 'option_html_resize');
-INSERT INTO {$db_prefix}settings (variable, value) VALUES ('avatar_max_height_upload', '65');
-INSERT INTO {$db_prefix}settings (variable, value) VALUES ('avatar_max_width_upload', '65');
-INSERT INTO {$db_prefix}settings (variable, value) VALUES ('avatar_resize_upload', '1');
+INSERT INTO {$db_prefix}settings (variable, value) VALUES ('avatar_max_height', '65');
+INSERT INTO {$db_prefix}settings (variable, value) VALUES ('avatar_max_width', '65');
+INSERT INTO {$db_prefix}settings (variable, value) VALUES ('avatar_action_too_large', 'option_resize');
 INSERT INTO {$db_prefix}settings (variable, value) VALUES ('avatar_download_png', '1');
 INSERT INTO {$db_prefix}settings (variable, value) VALUES ('gravatar_rating', 'g');
 INSERT INTO {$db_prefix}settings (variable, value) VALUES ('failed_login_threshold', '3');
@@ -2767,7 +2762,6 @@ INSERT INTO {$db_prefix}themes (id_theme, variable, value) VALUES (1, 'show_user
 INSERT INTO {$db_prefix}themes (id_theme, variable, value) VALUES (1, 'show_blurb', '1');
 INSERT INTO {$db_prefix}themes (id_theme, variable, value) VALUES (1, 'show_gender', '0');
 INSERT INTO {$db_prefix}themes (id_theme, variable, value) VALUES (1, 'number_recent_posts', '0');
-INSERT INTO {$db_prefix}themes (id_theme, variable, value) VALUES (1, 'show_member_bar', '1');
 INSERT INTO {$db_prefix}themes (id_theme, variable, value) VALUES (1, 'linktree_link', '1');
 INSERT INTO {$db_prefix}themes (id_theme, variable, value) VALUES (1, 'show_profile_buttons', '1');
 INSERT INTO {$db_prefix}themes (id_theme, variable, value) VALUES (1, 'show_mark_read', '1');

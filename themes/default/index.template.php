@@ -11,7 +11,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0
+ * @version 1.0.2
  *
  */
 
@@ -468,7 +468,8 @@ function theme_linktree($default = 'linktree')
 	foreach ($context[$default] as $tree)
 	{
 		echo '
-					<li class="linktree">';
+					<li class="linktree">
+						<span>';
 
 		// Dividers moved to pseudo-elements in CSS.
 		// Show something before the link?
@@ -483,6 +484,7 @@ function theme_linktree($default = 'linktree')
 			echo $tree['extra_after'];
 
 		echo '
+						</span>
 					</li>';
 	}
 
@@ -621,7 +623,7 @@ function template_button_strip($button_strip, $direction = '', $strip_options = 
 	{
 		if (!isset($value['test']) || !empty($context[$value['test']]))
 			$buttons[] = '
-								<li role="menuitem"><a' . (isset($value['id']) ? ' id="button_strip_' . $value['id'] . '"' : '') . ' class="linklevel1 button_strip_' . $key . (isset($value['active']) ? ' active' : '') . '" href="' . $value['url'] . '"' . (isset($value['custom']) ? ' ' . $value['custom'] : '') . '>' . $txt[$value['text']] . '</a></li>';
+								<li role="menuitem"><a' . (isset($value['id']) ? ' id="button_strip_' . $value['id'] . '"' : '') . ' class="linklevel1 button_strip_' . $key . (!empty($value['active']) ? ' active' : '') . '" href="' . $value['url'] . '"' . (isset($value['custom']) ? ' ' . $value['custom'] : '') . '>' . $txt[$value['text']] . '</a></li>';
 	}
 
 	// No buttons? No button strip either.
