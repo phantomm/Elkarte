@@ -9,7 +9,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  * This file contains javascript associated with the user profile
  */
@@ -50,30 +50,6 @@ function autoDetectTimeOffset(currentTime)
 	diff %= 24;
 
 	return diff;
-}
-
-/**
- * Prevent Chrome from auto completing fields when viewing/editing other members profiles
- */
-function disableAutoComplete()
-{
-	if (document.addEventListener)
-		document.addEventListener("DOMContentLoaded", disableAutoCompleteNow, false);
-}
-
-/**
- * Once DOMContentLoaded is triggered, call the function
- */
-function disableAutoCompleteNow()
-{
-	for (var i = 0, n = document.forms.length; i < n; i++)
-	{
-		var die = document.forms[i].elements;
-		for (var j = 0, m = die.length; j < m; j++)
-			// Only bother with text/password fields?
-			if (die[j].type === "text" || die[j].type === "password")
-				die[j].setAttribute("autocomplete", "off");
-	}
 }
 
 /**
@@ -143,7 +119,7 @@ function ajax_getSignaturePreview(showPreview)
 		if ($(request).find("error").text() !== '')
 		{
 			if (!$("#profile_error").is(":visible"))
-				$("#profile_error").css({display: "", position: "fixed", top: 0, left: 0, width: "100%"});
+				$("#profile_error").css({display: "", position: "fixed", top: 0, left: 0, width: "100%", 'z-index': '100'});
 
 			var errors = $(request).find('[type="error"]'),
 				errors_html = '<span>' + $(request).find('[type="errors_occurred"]').text() + '</span><ul>';

@@ -3,7 +3,7 @@
  * @copyright ElkArte Forum contributors
  * @license   BSD http://opensource.org/licenses/BSD-3-Clause
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.1
  *
  * This file contains javascript utility functions specific to ElkArte
  */
@@ -27,8 +27,9 @@ function elk_codefix()
  *
  * @param {string} btn string representing this, generally the anchor link tag <a class="" href="" onclick="">
  * @param {string} confirmation_msg_variable var name of the text sting to display in the "are you sure" box
+ * @param {function} onSuccessCallback optional, a callback executed on successfully execute the AJAX call
  */
-function toggleButtonAJAX(btn, confirmation_msg_variable)
+function toggleButtonAJAX(btn, confirmation_msg_variable, onSuccessCallback)
 {
 	$.ajax({
 		type: 'GET',
@@ -75,6 +76,9 @@ function toggleButtonAJAX(btn, confirmation_msg_variable)
 			if (oElement.getElementsByTagName('url').length !== 0)
 				window.location.href = oElement.getElementsByTagName('url')[0].firstChild.nodeValue;
 		}
+
+		if (typeof (onSuccessCallback) !== 'undefined')
+			onSuccessCallback(btn, request, oElement.getElementsByTagName('error'));
 	})
 	.fail(function() {
 		// ajax failure code
@@ -149,7 +153,20 @@ function notifyButton(btn)
 	if (typeof (notification_topic_notice) !== 'undefined' && !confirm(notification_topic_notice))
 		return false;
 
-	return toggleButtonAJAX(btn, 'notification_topic_notice');
+	return toggleButtonAJAX(btn, 'notification_topic_notice', function(btn, request, errors) {
+		var toggle = 0;
+
+		if (errors.length > 0)
+			return;
+
+		// This is a "turn notifications on"
+		if (btn.href.indexOf('sa=on') !== -1)
+			toggle = 1;
+		else
+			toggle = 0;
+
+		$("input[name='notify']").val(toggle);
+	});
 }
 
 /**
@@ -1397,4 +1414,21 @@ function loadAddNewPoll(button, id_board, form_name)
 	});
 
 	return false;
+}
+
+/**
+ * Attempt to prevent browsers from auto completing fields when viewing/editing other members profiles
+ * or when register new member
+ */
+function disableAutoComplete()
+{
+	window.onload = function() {
+		// Turn off autocomplete for these elements
+		$("input[type=email], input[type=password], .input_text, .input_clear").attr("autocomplete", "off");
+
+		// Chrome will fill out the form even with autocomplete off, so we need to empty the value as well.
+		setTimeout(function() {
+			$("input[type=password], .input_clear").val(" ").val("");
+		}, 1);
+	};
 }

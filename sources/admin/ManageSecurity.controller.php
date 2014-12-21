@@ -14,7 +14,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -453,6 +453,8 @@ class ManageSecurity_Controller extends Action_Controller
 				array('check', 'securityDisable'),
 				array('check', 'securityDisable_moderate'),
 			'',
+				array('check', 'enableOTP'),
+			'',
 				// Reactive on email, and approve on delete
 				array('check', 'send_validation_onChange'),
 				array('check', 'approveAccountDeletion'),
@@ -499,6 +501,7 @@ class ManageSecurity_Controller extends Action_Controller
 				'pm3' => array('int', 'pm_posts_per_hour', 'postinput' => $txt['pm_posts_per_hour_note']),
 		);
 
+		require_once(SUBSDIR . '/VerificationControls.class.php');
 		$known_verifications = loadVerificationControls();
 
 		foreach ($known_verifications as $verification)

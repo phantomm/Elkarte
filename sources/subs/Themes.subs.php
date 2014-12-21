@@ -10,7 +10,7 @@
  * @copyright ElkArte Forum contributors
  * @license   BSD http://opensource.org/licenses/BSD-3-Clause
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
@@ -147,7 +147,7 @@ function validateThemeName($indexes, $value_data)
 /**
  * Get a basic list of themes
  *
- * @param int[] $themes
+ * @param int|int[] $themes
  * @return array
  */
 function getBasicThemeInfos($themes)
@@ -163,13 +163,13 @@ function getBasicThemeInfos($themes)
 			AND variable = {string:name}
 			AND id_theme IN ({array_int:theme_list})',
 		array(
-			'theme_list' => array_keys($themes),
+			'theme_list' => (array) $themes,
 			'no_member' => 0,
 			'name' => 'name',
 		)
 	);
 	while ($row = $db->fetch_assoc($request))
-		$themelist[$themes[$row['id_theme']]] = $row['value'];
+		$themelist[$row['id_theme']] = $row['value'];
 
 	$db->free_result($request);
 
@@ -528,10 +528,10 @@ function availableThemes($current_theme, $current_member)
 		// The thumbnail needs the correct path.
 		$settings['images_url'] = &$theme_data['images_url'];
 
-		if (file_exists($theme_data['theme_dir'] . '/languages/Settings.' . $user_info['language'] . '.php'))
-			include($theme_data['theme_dir'] . '/languages/Settings.' . $user_info['language'] . '.php');
-		elseif (file_exists($theme_data['theme_dir'] . '/languages/Settings.' . $language . '.php'))
-			include($theme_data['theme_dir'] . '/languages/Settings.' . $language . '.php');
+		if (file_exists($theme_data['theme_dir'] . '/languages/' . $user_info['language'] . '/Settings.' . $user_info['language'] . '.php'))
+			include($theme_data['theme_dir'] . '/languages/' . $user_info['language'] . '/Settings.' . $user_info['language'] . '.php');
+		elseif (file_exists($theme_data['theme_dir'] . '/languages/' . $language . '/Settings.' . $language . '.php'))
+			include($theme_data['theme_dir'] . '/languages/' . $language . '/Settings.' . $language . '.php');
 		else
 		{
 			$txt['theme_thumbnail_href'] = $theme_data['images_url'] . '/thumbnail.png';
@@ -551,6 +551,8 @@ function availableThemes($current_theme, $current_member)
 
 				// Fill settings up.
 				eval('global $settings; $settings[\'theme_variants\'] = ' . $matches[1] . ';');
+
+				call_integration_hook('integrate_init_theme', array($id_theme, &$settings));
 
 				if (!empty($settings['theme_variants']))
 				{
@@ -628,6 +630,8 @@ function countConfiguredMemberOptions()
 function removeThemeOptions($theme, $membergroups, $old_settings = '')
 {
 	$db = database();
+
+	$query_param = array();
 
 	// The default theme is 1 (id_theme = 1)
 	if ($theme === 'default')

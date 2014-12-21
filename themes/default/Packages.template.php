@@ -11,7 +11,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
@@ -632,7 +632,7 @@ function template_control_chmod()
 	}
 
 	echo '
-				<div id="ftp_error_div" style="', (!empty($context['package_ftp']['error']) ? '' : 'display:none;'), '">
+				<div id="ftp_error_div" class="errorbox" style="', (!empty($context['package_ftp']['error']) ? '' : 'display:none;'), '">
 					<span id="ftp_error_message">', !empty($context['package_ftp']['error']) ? $context['package_ftp']['error'] : '', '</span>
 				</div>';
 
@@ -1258,9 +1258,6 @@ function template_pause_action_permissions()
 	// Just the countdown stuff
 	echo '
 	<script><!-- // --><![CDATA[
-		var countdown = ', $countDown, ',
-			txt_message = "', $txt['not_done_continue'], '";
-
-		doAutoSubmit();
+		doAutoSubmit(', $countDown, ', ', JavaScriptEscape($txt['not_done_continue']), ');
 	// ]]></script>';
 }

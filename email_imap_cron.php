@@ -8,7 +8,7 @@
  * @copyright ElkArte Forum contributors
  * @license   BSD http://opensource.org/licenses/BSD-3-Clause
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -196,7 +196,7 @@ class PBE_IMAP
 		$this->_mailbox = $this->_imap_server .  imap_utf7_encode($this->_mailbox);
 
 		// Connect to the mailbox using the supplied credentials and protocol
-		$this->_inbox = @imap_open($this->_mailbox, $username, $password);
+		$this->_inbox = @imap_open($this->_mailbox, $this->_username, $this->_password);
 	}
 
 	/**

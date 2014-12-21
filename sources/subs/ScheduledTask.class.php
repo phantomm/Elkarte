@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
@@ -261,7 +261,7 @@ class Scheduled_Task
 		$db = database();
 
 		// First clean out the cache.
-		clean_cache();
+		clean_cache('data');
 
 		// If warning decrement is enabled and we have people who have not had a new warning in 24 hours, lower their warning level.
 		list (, , $modSettings['warning_decrement']) = explode(',', $modSettings['warning_settings']);
@@ -551,7 +551,7 @@ class Scheduled_Task
 				{
 					// Convert to markdown markup e.g. text ;)
 					pbe_prepare_text($row['body']);
-					$row['body'] = shorten_text($row['body'], !empty($modSettings['digest_preview_length']) ? $modSettings['digest_preview_length'] : 375, true);
+					$row['body'] = Util::shorten_text($row['body'], !empty($modSettings['digest_preview_length']) ? $modSettings['digest_preview_length'] : 375, true);
 					$row['body'] = preg_replace("~\n~s", "\n  ", $row['body']);
 				}
 
@@ -597,7 +597,7 @@ class Scheduled_Task
 					// Replace the body array with the appropriate preview message
 					$body = $types['reply'][$id]['lines'][$topic['id']]['body_text'];
 					pbe_prepare_text($body);
-					$body = shorten_text($body, !empty($modSettings['digest_preview_length']) ? $modSettings['digest_preview_length'] : 375, true);
+					$body = Util::shorten_text($body, !empty($modSettings['digest_preview_length']) ? $modSettings['digest_preview_length'] : 375, true);
 					$body = preg_replace("~\n~s", "\n  ", $body);
 					$types['reply'][$id]['lines'][$topic['id']]['body'] = $body;
 
@@ -824,18 +824,6 @@ class Scheduled_Task
 	}
 
 	/**
-	 * This task retrieved files from the official server.
-	 * This task is no longer used and the method remains only to avoid
-	 * "last minute" problems, it will be removed from 1.1 version
-	 *
-	 * @deprecated since 1.0 - will be removed in 1.1
-	 */
-	public function fetchFiles()
-	{
-		return true;
-	}
-
-	/**
 	 * Schedule birthday emails.
 	 * (aka "Happy birthday!!")
 	 */
@@ -1040,12 +1028,10 @@ class Scheduled_Task
 					SELECT id_report
 					FROM {db_prefix}log_reported
 					WHERE time_started < {int:time_started}
-						AND closed = {int:not_closed}
-						AND ignore_all = {int:not_ignored}',
+						AND closed = {int:closed}',
 					array(
 						'time_started' => $t,
-						'not_closed' => 0,
-						'not_ignored' => 0,
+						'closed' => 1,
 					)
 				);
 				while ($row = $db->fetch_row($result))
@@ -1470,7 +1456,7 @@ class Scheduled_Task
 				updateSettings(array('user_access_mentions' => serialize($user_access_mentions)));
 
 				// Count helps keep things correct
-				countUserMentions(true, '', $member);
+				countUserMentions(false, '', $member);
 
 				// Run this only once for each user, it may be quite heavy, let's split up the load
 				break;
@@ -1533,7 +1519,7 @@ class Scheduled_Task
 				$user_see_board = memberQuerySeeBoard($row['id_member']);
 
 				// Find out if this user cannot see something that was supposed to be able to see
-				$request = $db->query('', '
+				$request2 = $db->query('', '
 					SELECT mnt.id_mention
 					FROM {db_prefix}log_mentions as mnt
 						LEFT JOIN {db_prefix}messages AS m ON (m.id_msg = mnt.id_msg)
@@ -1550,7 +1536,7 @@ class Scheduled_Task
 					)
 				);
 				// One row of results is enough: scheduleTaskImmediate!
-				if ($db->num_rows($request) == 1)
+				if ($db->num_rows($request2) == 1)
 				{
 					if (!empty($modSettings['user_access_mentions']))
 						$modSettings['user_access_mentions'] = @unserialize($modSettings['user_access_mentions']);
@@ -1565,7 +1551,9 @@ class Scheduled_Task
 						scheduleTaskImmediate('user_access_mentions');
 					}
 				}
+				$db->free_result($request2);
 			}
+			$db->free_result($request);
 
 			return true;
 		}

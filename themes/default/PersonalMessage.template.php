@@ -11,7 +11,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -380,12 +380,7 @@ function template_subject_list_below()
 
 	// Individual messages = button list!
 	if ($context['display_mode'] == 1)
-	{
-		echo '
-					<br />';
-
 		template_subject_list();
-	}
 }
 
 /**
@@ -452,9 +447,10 @@ function template_subject_list()
 									', $message['is_replied_to'] ? '<img src="' . $settings['images_url'] . '/icons/pm_replied.png" alt="' . $txt['pm_replied'] . '" />' : '<img src="' . $settings['images_url'] . '/icons/pm_read.png" alt="' . $txt['pm_read'] . '" />', '</td>
 								<td class="pm_date">', $message['time'], '</td>
 								<td class="pm_subject">',
-									($context['display_mode'] != 0 && $context['current_pm'] == $message['id'] ? '<img src="' . $settings['images_url'] . '/selected.png" alt="*" />' : ''),
-									'<a href="', $discussion_url, '#msg_', $message['id'], '">
-										', $message['subject'], '</a>', $message['is_unread'] ? '&nbsp;<a href="' . $discussion_url . '#msg_' . $message['id'] . '" class="new_posts">' . $txt['new'] . '</a>' : '', '
+									$context['display_mode'] != 0 && $context['current_pm'] == $message['id'] ? '<img src="' . $settings['images_url'] . '/selected.png" alt="*" />' : '',
+									$message['is_unread'] ? '<a href="' . $discussion_url . '#msg_' . $message['id'] . '" class="new_posts">' . $txt['new'] . '</a>' : '', '
+									<a href="', $discussion_url, '#msg_', $message['id'], '">
+										', $message['subject'], '
 									</a>
 								</td>
 								<td class="pm_from">
@@ -1105,7 +1101,7 @@ function template_ask_delete()
 		<div class="windowbg">
 			<div class="content">
 				<p>', $txt['delete_all_confirm'], '</p><br />
-				<strong><a href="', $scripturl, '?action=pm;sa=removeall2;f=', $context['folder'], ';', $context['current_label_id'] != -1 ? ';l=' . $context['current_label_id'] : '', ';', $context['session_var'], '=', $context['session_id'], '">', $txt['yes'], '</a> - <a href="javascript:history.go(-1);">', $txt['no'], '</a></strong>
+				<strong><a href="', $scripturl, '?action=pm;sa=removeall2;f=', $context['folder'], ';', $context['current_label_id'] != -1 ? ';l=' . $context['current_label_id'] : '', ';', $context['session_var'], '=', $context['session_id'], '">', $txt['yes'], '</a> - <a href="javascript:window.location.assign(document.referrer);">', $txt['no'], '</a></strong>
 			</div>
 		</div>';
 }

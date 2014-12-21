@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -122,7 +122,8 @@ class MoveTopic_Controller extends Action_Controller
 		}
 
 		// We will need this
-		moveTopicConcurrence();
+		if (isset($_GET['current_board']))
+			moveTopicConcurrence((int) $_GET['current_board']);
 
 		// Register this form and get a sequence number in $context.
 		checkSubmitOnce('register');
@@ -141,7 +142,7 @@ class MoveTopic_Controller extends Action_Controller
 	 */
 	public function action_movetopic2()
 	{
-		global $txt, $board, $topic, $scripturl, $modSettings, $context, $language, $user_info;
+		global $txt, $board, $topic, $scripturl, $context, $language, $user_info;
 
 		if (empty($topic))
 			fatal_lang_error('no_access', false);
@@ -156,7 +157,8 @@ class MoveTopic_Controller extends Action_Controller
 
 		// We will need this
 		require_once(SUBSDIR . '/Topic.subs.php');
-		moveTopicConcurrence();
+		if (isset($_GET['current_board']))
+			moveTopicConcurrence((int) $_GET['current_board']);
 
 		// Make sure this form hasn't been submitted before.
 		checkSubmitOnce('check');
@@ -211,18 +213,7 @@ class MoveTopic_Controller extends Action_Controller
 				if ($all_messages)
 				{
 					// Get a response prefix, but in the forum's default language.
-					if (!isset($context['response_prefix']) && !($context['response_prefix'] = cache_get_data('response_prefix')))
-					{
-						if ($language === $user_info['language'])
-							$context['response_prefix'] = $txt['response_prefix'];
-						else
-						{
-							loadLanguage('index', $language, false);
-							$context['response_prefix'] = $txt['response_prefix'];
-							loadLanguage('index');
-						}
-						cache_put_data('response_prefix', $context['response_prefix'], 600);
-					}
+					$context['response_prefix'] = response_prefix();
 
 					topicSubject($topic_info, $custom_subject, $context['response_prefix'], $all_messages);
 				}
@@ -273,7 +264,7 @@ class MoveTopic_Controller extends Action_Controller
 				'board' => $board,
 				'lock_mode' => 1,
 				'mark_as_read' => true,
-				'redirect_expires' => ($redirect_expires * 60) + time(),
+				'redirect_expires' => empty($redirect_expires) ? 0 : ($redirect_expires * 60) + time(),
 				'redirect_topic' => $redirect_topic,
 			);
 

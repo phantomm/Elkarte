@@ -7,7 +7,7 @@
  * @copyright ElkArte Forum contributors
  * @license   BSD http://opensource.org/licenses/BSD-3-Clause
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -136,6 +136,14 @@ interface Database
 	 * @param resource|null $connection = null
 	 */
 	public function error($db_string, $connection = null);
+
+	/**
+	 * Sets the class not to return the error in case of failures.
+	 *
+	 * @param null|boolean $set if true the query method will not return any error
+	 *                     if null will restore the last known value of skip_error
+	 */
+	public function skip_error($set = true);
 
 	/**
 	 * Insert data.

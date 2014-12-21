@@ -11,7 +11,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -339,10 +339,7 @@ function template_email_members_send()
 	</div>
 
 	<script><!-- // --><![CDATA[
-		var countdown = 2,
-			txt_message = "', $txt['email_continue'], '";
-
-		doAutoSubmit();
+		doAutoSubmit(2, ', JavaScriptEscape($txt['email_continue']), ');
 	// ]]></script>';
 }
 

@@ -12,7 +12,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -40,7 +40,7 @@ class DbTable_MySQL extends DbTable
 	 * Array of table names we don't allow to be removed by addons.
 	 * @var array
 	 */
-	private $_reservedTables = null;
+	protected $_reservedTables = null;
 
 	/**
 	 * Keeps a (reverse) log of changes to the table structure, to be undone.
@@ -723,7 +723,7 @@ class DbTable_MySQL extends DbTable
 	/**
 	 * Static method that allows to retrieve or create an instance of this class.
 	 *
-	 * @param object $_db - A Database_MySQL object
+	 * @param object $db - A Database_MySQL object
 	 * @return object - A DbTable_MySQL object
 	 */
 	public static function db_table($db)

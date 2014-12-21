@@ -11,30 +11,9 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
-
-/**
- * Template template wraps around the simple settings page to add javascript functionality.
- * (section above)
- */
-function template_avatar_settings_below()
-{
-	echo '
-	<script><!-- // --><![CDATA[
-	var fUpdateStatus = function ()
-	{
-		document.getElementById("avatar_max_width_external").disabled = document.getElementById("avatar_download_external").checked;
-		document.getElementById("avatar_max_height_external").disabled = document.getElementById("avatar_download_external").checked;
-		document.getElementById("avatar_action_too_large").disabled = document.getElementById("avatar_download_external").checked;
-		document.getElementById("custom_avatar_dir").disabled = document.getElementById("custom_avatar_enabled").value == 0;
-		document.getElementById("custom_avatar_url").disabled = document.getElementById("custom_avatar_enabled").value == 0;
-	}
-	addLoadEvent(fUpdateStatus);
-// ]]></script>
-';
-}
 
 /**
  * Forum maintenance page.
@@ -118,7 +97,9 @@ function template_maintenance()
 				<form action="', $scripturl, '?action=admin;area=manageattachments;sa=transfer" method="post" accept-charset="UTF-8">
 					<p class="infobox">', $txt['attachment_transfer_desc'], '</p>
 					<dl class="settings">
-						<dt><label for="from">', $txt['attachment_transfer_from'], '</label></dt>
+						<dt>
+							<label for="from">', $txt['attachment_transfer_from'], '</label>
+						</dt>
 						<dd>
 							<select id="from" name="from">
 								<option value="0">', $txt['attachment_transfer_select'], '</option>';
@@ -130,7 +111,9 @@ function template_maintenance()
 	echo '
 							</select>
 						</dd>
-						<dt><label for="auto">', $txt['attachment_transfer_auto'], '</label></dt>
+						<dt>
+							<label for="auto">', $txt['attachment_transfer_auto'], '</label>
+						</dt>
 						<dd>
 							<select id="auto" name="auto" onchange="transferAttachOptions();">
 								<option value="0">', $txt['attachment_transfer_auto_select'], '</option>
@@ -147,7 +130,9 @@ function template_maintenance()
 	echo '
 							</select>
 						</dd>
-						<dt><label for="to">', $txt['attachment_transfer_to'], '</label></dt>
+						<dt>
+							<label for="to">', $txt['attachment_transfer_to'], '</label>
+						</dt>
 						<dd>
 							<select id="to" name="to" onchange="transferAttachOptions();" >
 								<option value="0">', $txt['attachment_transfer_select'], '</option>';
@@ -163,8 +148,14 @@ function template_maintenance()
 	// If there are directory limits to impose, give the option to enforce it
 	if (!empty($modSettings['attachmentDirFileLimit']))
 		echo '
-						<dt><a href="' . $scripturl . '?action=quickhelp;help=attachment_transfer_empty" onclick="return reqOverlayDiv(this.href);" class="help"><img src="' . $settings['images_url'] . '/helptopics.png" class="icon" alt="' . $txt['help'] . '" /></a>', $txt['attachment_transfer_empty'], '</a></dt>
-						<dd><input type="checkbox" name="empty_it"', $context['checked'] ? ' checked="checked"' : '', ' /></dd>';
+						<dt>
+							<a href="' . $scripturl . '?action=quickhelp;help=attachment_transfer_empty" onclick="return reqOverlayDiv(this.href);" class="help">
+								<img src="' . $settings['images_url'] . '/helptopics.png" class="icon_fixed" alt="' . $txt['help'] . '" />
+							</a>', $txt['attachment_transfer_empty'], '</a>
+						</dt>
+						<dd>
+							<input type="checkbox" name="empty_it"', $context['checked'] ? ' checked="checked"' : '', ' />
+						</dd>';
 
 	echo '
 					</dl>
@@ -179,7 +170,7 @@ function template_maintenance()
 					}
 
 					function show_msg() {
-						$(\'#progress_msg\').html(\'<div><i class="fa fa-spinner fa-spin" alt="loading"></i>&nbsp;', $txt['attachment_transfer_progress'], '<\/div>\');
+						$(\'#progress_msg\').html(\'<div><i class="fa fa-spinner fa-spin"></i>&nbsp;', $txt['attachment_transfer_progress'], '<\/div>\');
 						show_progress();
 					}
 

@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -399,7 +399,7 @@ class PostModeration_Controller extends Action_Controller
 						'function' => function ($data) {
 							global $modSettings;
 
-							return '<a href="' . $data['message']['href'] . '">' . shorten_text($data['message']['subject'], !empty($modSettings['subject_length']) ? $modSettings['subject_length'] : 24) . '</a>';
+							return '<a href="' . $data['message']['href'] . '">' . Util::shorten_text($data['message']['subject'], !empty($modSettings['subject_length']) ? $modSettings['subject_length'] : 24) . '</a>';
 						},
 						'class' => 'smalltext',
 						'style' => 'width:15em;',
@@ -483,12 +483,7 @@ class PostModeration_Controller extends Action_Controller
 
 		// If it's the first in a topic then the whole topic gets approved!
 		if ($message_info['id_first_msg'] == $current_msg)
-		{
-			approveTopics($topic, !$message_info['approved']);
-
-			if ($message_info['id_member_started'] != $user_info['id'])
-				logAction(($message_info['approved'] ? 'un' : '') . 'approve_topic', array('topic' => $topic, 'subject' => $message_info['subject'], 'member' => $message_info['id_member_started'], 'board' => $board));
-		}
+			approveTopics($topic, !$message_info['approved'], $message_info['id_member_started'] != $user_info['id']);
 		else
 		{
 			approvePosts($current_msg, !$message_info['approved']);

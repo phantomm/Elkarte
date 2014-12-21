@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -457,7 +457,7 @@ class Packages_Controller extends Action_Controller
 						elseif (isset($mod_action['filename']) && preg_match('~([\w]*)/([\w]*)\.template\.php$~', $mod_action['filename'], $matches))
 							$actual_filename = strtolower($matches[1] . '/' . $matches[2] . '.template.php||' . $action['filename']);
 						else
-							$actual_filename = $key;
+							$actual_filename = $operation_key;
 
 						// We just need it for actual parse changes.
 						if (!in_array($mod_action['type'], array('error', 'result', 'opened', 'saved', 'end', 'missing', 'skipping', 'chmod')))
@@ -1036,6 +1036,8 @@ class Packages_Controller extends Action_Controller
 				$table_log = $table_installer->package_log();
 				if (!empty($old_db_changes))
 					$db_package_log = empty($table_log) ? $old_db_changes : array_merge($old_db_changes, $table_log);
+				else
+					$db_package_log = $table_log;
 
 				// If there are some database changes we might want to remove then filter them out.
 				if (!empty($db_package_log))
@@ -1284,7 +1286,7 @@ class Packages_Controller extends Action_Controller
 							'style' => 'width: 40px;',
 						),
 						'data' => array(
-							'function' => function ($package_md5) {
+							'function' => function ($package_md5) use ($type) {
 								global $context;
 
 								if (isset($context['available_' . $type . ''][$package_md5]))
@@ -1302,7 +1304,7 @@ class Packages_Controller extends Action_Controller
 							'style' => 'width: 25%;',
 						),
 						'data' => array(
-							'function' => function ($package_md5) {
+							'function' => function ($package_md5) use ($type)  {
 								global $context;
 
 								if (isset($context['available_' . $type . ''][$package_md5]))
@@ -1320,7 +1322,7 @@ class Packages_Controller extends Action_Controller
 							'style' => 'width: 25%;',
 						),
 						'data' => array(
-							'function' => function ($package_md5) {
+							'function' => function ($package_md5) use ($type)  {
 								global $context;
 
 								if (isset($context['available_' . $type . ''][$package_md5]))
@@ -1337,7 +1339,7 @@ class Packages_Controller extends Action_Controller
 							'value' => '',
 						),
 						'data' => array(
-							'function' => function ($package_md5) {
+							'function' => function ($package_md5) use ($type) {
 								global $context, $scripturl, $txt;
 
 								if (!isset($context['available_' . $type . ''][$package_md5]))

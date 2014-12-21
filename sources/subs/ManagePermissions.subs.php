@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
@@ -76,14 +76,13 @@ function setPermissionLevel($level, $group = null, $profile = null)
 		'view_mlist',
 		'karma_edit',
 		'like_posts',
+		'like_posts_stats',
 		'pm_read',
 		'pm_send',
 		'send_email_to_members',
 		'profile_view_any',
 		'profile_extra_own',
-		'profile_server_avatar',
-		'profile_upload_avatar',
-		'profile_remote_avatar',
+		'profile_set_avatar',
 		'profile_remove_own',
 	));
 	$groupLevels['board']['standard'] = array_merge($groupLevels['board']['restrict'], array(
@@ -433,6 +432,7 @@ function loadAllPermissions()
 			'search_posts' => array(false, 'general'),
 			'karma_edit' => array(false, 'general'),
 			'like_posts' => array(false, 'general'),
+			'like_posts_stats' => array(false, 'general'),
 			'disable_censor' => array(false, 'general'),
 			'pm_read' => array(false, 'pm'),
 			'pm_send' => array(false, 'pm'),
@@ -459,9 +459,7 @@ function loadAllPermissions()
 			'profile_extra' => array(true, 'profile'),
 			'profile_title' => array(true, 'profile'),
 			'profile_remove' => array(true, 'profile'),
-			'profile_server_avatar' => array(false, 'profile'),
-			'profile_upload_avatar' => array(false, 'profile'),
-			'profile_remote_avatar' => array(false, 'profile'),
+			'profile_set_avatar' => array(false, 'profile'),
 			'approve_emails' => array(false, 'member_admin'),
 		),
 		'board' => array(

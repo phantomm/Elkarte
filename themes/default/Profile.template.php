@@ -11,7 +11,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -30,8 +30,8 @@ function template_profile_above()
 {
 	global $context;
 
-	// Prevent Chrome from auto completing fields when viewing/editing other members profiles
-	if (isBrowser('is_webkit') && !$context['user']['is_owner'])
+	// Prevent browssers from auto completing fields when viewing/editing other members profiles
+	if (!$context['user']['is_owner'])
 		addInlineJavascript('disableAutoComplete();', true);
 
 	// If an error occurred while trying to save previously, give the user a clue!

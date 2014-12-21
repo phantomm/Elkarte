@@ -11,7 +11,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -118,7 +118,7 @@ function template_package_confirm()
 			<div class="content">
 				<p>', $context['confirm_message'], '</p>
 				<a href="', $context['proceed_href'], '">[ ', $txt['package_confirm_proceed'], ' ]</a>
-				<a href="JavaScript:history.go(-1);">[ ', $txt['package_confirm_go_back'], ' ]</a>
+				<a href="JavaScript:window.location.assign(document.referrer);">[ ', $txt['package_confirm_go_back'], ' ]</a>
 			</div>
 		</div>
 	</div>';

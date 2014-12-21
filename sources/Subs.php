@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
@@ -419,11 +419,11 @@ function standardTime($log_time, $show_today = true, $offset_type = false)
 
 		// Same day of the year, same year.... Today!
 		if ($then['yday'] == $now['yday'] && $then['year'] == $now['year'])
-			return $txt['today'] . standardTime($log_time, $today_fmt, $offset_type);
+			return sprintf($txt['today'], standardTime($log_time, $today_fmt, $offset_type));
 
 		// Day-of-year is one less and same year, or it's the first of the year and that's the last of the year...
 		if ($modSettings['todayMod'] == '2' && (($then['yday'] == $now['yday'] - 1 && $then['year'] == $now['year']) || ($now['yday'] == 0 && $then['year'] == $now['year'] - 1) && $then['mon'] == 12 && $then['mday'] == 31))
-			return $txt['yesterday'] . standardTime($log_time, $today_fmt, $offset_type);
+			return sprintf($txt['yesterday'], standardTime($log_time, $today_fmt, $offset_type));
 	}
 
 	$str = !is_bool($show_today) ? $show_today : $user_info['time_format'];
@@ -518,47 +518,6 @@ function un_htmlspecialchars($string)
 }
 
 /**
- * Shorten a string of text
- *
- * What it does:
- * - shortens a text string so that it is either shorter than length, or that length plus an ellipsis.
- * - optionally attempts to break the string on a word boundary approximately at the allowed length
- * - if using cutword and the resulting length is > len plus buffer then it is truncated to length plus an ellipsis.
- * - respects internationalization characters and entities as one character.
- * - returns the shortened string.
- *
- * @param string $text
- * @param int $len
- * @param bool $cutword try to cut at a word boundary
- * @param int $buffer maximum length overflow to allow when cutting on a word boundary
- */
-function shorten_text($text, $len = 384, $cutword = false, $buffer = 12)
-{
-	// If its to long, cut it down to size
-	if (Util::strlen($text) > $len)
-	{
-		if ($cutword)
-		{
-			$text = html_entity_decode($text, ENT_QUOTES, 'UTF-8');
-
-			// Look for len - buffer characters and cut on first word boundary after
-			preg_match('~(.{' . max(1, ($len - $buffer)) . '}.*?)\b~su', $text, $matches);
-
-			// Always one clown in the audience who likes long words or not using the spacebar
-			if (Util::strlen($matches[1]) > $len + $buffer)
-				$matches[1] = Util::substr($matches[1], 0, $len);
-
-			$text = rtrim($matches[1]) . ' ...';
-			$text = Util::htmlspecialchars($text);
-		}
-		else
-			$text = Util::substr($text, 0, $len - 3) . '...';
-	}
-
-	return $text;
-}
-
-/**
  * Calculates all the possible permutations (orders) of an array.
  *
  * What it does:
@@ -619,7 +578,7 @@ function parse_bbc($message, $smileys = true, $cache_id = '', $parse_tags = arra
 	global $txt, $scripturl, $context, $modSettings, $user_info;
 
 	static $bbc_codes = array(), $itemcodes = array(), $no_autolink_tags = array();
-	static $disabled;
+	static $disabled, $default_disabled, $parse_tag_cache;
 
 	// Don't waste cycles
 	if ($message === '')
@@ -646,18 +605,11 @@ function parse_bbc($message, $smileys = true, $cache_id = '', $parse_tags = arra
 		return $message;
 	}
 
-	// If we are not doing every tag then we don't cache this run.
-	if (!empty($parse_tags) && !empty($bbc_codes))
-	{
-		$temp_bbc = $bbc_codes;
-		$bbc_codes = array();
-	}
-
 	// Allow addons access before entering the main parse_bbc loop
 	call_integration_hook('integrate_pre_parsebbc', array(&$message, &$smileys, &$cache_id, &$parse_tags));
 
 	// Sift out the bbc for a performance improvement.
-	if (empty($bbc_codes) || $message === false || !empty($parse_tags))
+	if (empty($bbc_codes) || $message === false)
 	{
 		if (!empty($modSettings['disabledBBC']))
 		{
@@ -797,13 +749,7 @@ function parse_bbc($message, $smileys = true, $cache_id = '', $parse_tags = arra
 					global $context;
 
 					if (!isset($disabled['code']))
-					{
-						$data = str_replace("\t", "<span style=\"white-space: pre;\">\t</span>", $data);
-
-						// Recent Opera bug requiring temporary fix. &nsbp; is needed before </code> to avoid broken selection.
-						if ($context['browser']['is_opera'])
-							$data .= '&nbsp;';
-					}
+						$data = str_replace("\t", "<span class=\"tab\">\t</span>", $data);
 				},
 				'block_level' => true,
 			),
@@ -815,13 +761,7 @@ function parse_bbc($message, $smileys = true, $cache_id = '', $parse_tags = arra
 					global $context;
 
 					if (!isset($disabled['code']))
-					{
-						$data[0] = str_replace("\t", "<span style=\"white-space: pre;\">\t</span>", $data[0]);
-
-						// Recent Opera bug requiring temporary fix. &nsbp; is needed before </code> to avoid broken selection.
-						if ($context['browser']['is_opera'])
-							$data[0] .= '&nbsp;';
-					}
+						$data[0] = str_replace("\t", "<span class=\"tab\">\t</span>", $data[0]);
 				},
 				'block_level' => true,
 			),
@@ -887,13 +827,6 @@ function parse_bbc($message, $smileys = true, $cache_id = '', $parse_tags = arra
 				'disabled_after' => ' ($1)',
 			),
 			array(
-				'tag' => 'html',
-				'type' => 'unparsed_content',
-				'content' => '$1',
-				'block_level' => true,
-				'disabled_content' => '$1',
-			),
-			array(
 				'tag' => 'hr',
 				'type' => 'closed',
 				'content' => '<hr />',
@@ -909,10 +842,10 @@ function parse_bbc($message, $smileys = true, $cache_id = '', $parse_tags = arra
 				'type' => 'unparsed_content',
 				'parameters' => array(
 					'alt' => array('optional' => true),
-					'width' => array('optional' => true, 'value' => '$1px;', 'match' => '(\d+)'),
-					'height' => array('optional' => true, 'value' => '$1px;', 'match' => '(\d+)'),
+					'width' => array('optional' => true, 'value' => 'width:100%;max-width:$1px;', 'match' => '(\d+)'),
+					'height' => array('optional' => true, 'value' => 'max-height:$1px;', 'match' => '(\d+)'),
 				),
-				'content' => '<img src="$1" alt="{alt}" style="width:{width};height:{height}" class="bbc_img resized" />',
+				'content' => '<img src="$1" alt="{alt}" style="{width}{height}" class="bbc_img resized" />',
 				'validate' => function(&$tag, &$data, $disabled) {
 					$data = strtr($data, array('<br />' => ''));
 					if (strpos($data, 'http://') !== 0 && strpos($data, 'https://') !== 0)
@@ -1048,7 +981,7 @@ function parse_bbc($message, $smileys = true, $cache_id = '', $parse_tags = arra
 				'tag' => 'quote',
 				'parameters' => array(
 					'author' => array('match' => '([^<>]{1,192}?)'),
-					'link' => array('match' => '(?:board=\d+;)?((?:topic|threadid)=[\dmsg#\./]{1,40}(?:;start=[\dmsg#\./]{1,40})?|action=profile;u=\d+)'),
+					'link' => array('match' => '(?:board=\d+;)?((?:topic|threadid)=[\dmsg#\./]{1,40}(?:;start=[\dmsg#\./]{1,40})?|msg=\d{1,40}|action=profile;u=\d+)'),
 					'date' => array('match' => '(\d+)', 'validate' => 'htmlTime'),
 				),
 				'before' => '<div class="quoteheader"><a href="' . $scripturl . '?{link}">' . $txt['quote_from'] . ': {author} ' . ($modSettings['todayMod'] == 3 ? ' - ' : $txt['search_on']) . ' {date}</a></div><blockquote>',
@@ -1195,18 +1128,6 @@ function parse_bbc($message, $smileys = true, $cache_id = '', $parse_tags = arra
 			'ftp',
 			'email',
 		);
-
-		// Let addons add new BBC without hassle.
-		call_integration_hook('integrate_bbc_codes', array(&$codes, &$no_autolink_tags));
-
-		// This is mainly for the bbc manager, so it's easy to add tags above.  Custom BBC should be added above this line.
-		if ($message === false)
-		{
-			if (isset($temp_bbc))
-				$bbc_codes = $temp_bbc;
-			return $codes;
-		}
-
 		// So the parser won't skip them.
 		$itemcodes = array(
 			'*' => 'disc',
@@ -1218,6 +1139,18 @@ function parse_bbc($message, $smileys = true, $cache_id = '', $parse_tags = arra
 			'o' => 'circle',
 			'O' => 'circle',
 		);
+
+		// Let addons add new BBC without hassle.
+		call_integration_hook('integrate_bbc_codes', array(&$codes, &$no_autolink_tags, &$itemcodes));
+
+		// This is mainly for the bbc manager, so it's easy to add tags above.  Custom BBC should be added above this line.
+		if ($message === false)
+		{
+			if (isset($temp_bbc))
+				$bbc_codes = $temp_bbc;
+			return $codes;
+		}
+
 		if (!isset($disabled['li']) && !isset($disabled['list']))
 		{
 			foreach ($itemcodes as $c => $dummy)
@@ -1225,12 +1158,40 @@ function parse_bbc($message, $smileys = true, $cache_id = '', $parse_tags = arra
 		}
 
 		foreach ($codes as $code)
+			$bbc_codes[substr($code['tag'], 0, 1)][] = $code;
+	}
+
+	// If we are not doing every enabled tag then create a cache for this parsing group.
+	if ($parse_tags !== array() && is_array($parse_tags))
+	{
+		$temp_bbc = $bbc_codes;
+		$tags_cache_id = implode(',', $parse_tags);
+
+		if (!isset($default_disabled))
+			$default_disabled = isset($disabled) ? $disabled : array();
+
+		// Already cached, use it, otherwise create it
+		if (isset($parse_tag_cache[$tags_cache_id]))
+			list ($bbc_codes, $disabled) = $parse_tag_cache[$tags_cache_id];
+		else
 		{
-			// If we are not doing every tag only do ones we are interested in.
-			if (empty($parse_tags) || in_array($code['tag'], $parse_tags))
-				$bbc_codes[substr($code['tag'], 0, 1)][] = $code;
+			foreach ($bbc_codes as $key_bbc => $bbc)
+			{
+				foreach ($bbc as $key_code => $code)
+				{
+					if (!in_array($code['tag'], $parse_tags))
+					{
+						$disabled[$code['tag']] = true;
+						unset($bbc_codes[$key_bbc][$key_code]);
+					}
+				}
+			}
+
+			$parse_tag_cache[$tags_cache_id] = array($bbc_codes, $disabled);
 		}
 	}
+	elseif (isset($default_disabled))
+		$disabled = $default_disabled;
 
 	// Shall we take the time to cache this?
 	if ($cache_id != '' && !empty($modSettings['cache_enable']) && (($modSettings['cache_enable'] >= 2 && isset($message[1000])) || isset($message[2400])) && empty($parse_tags))
@@ -1988,7 +1949,7 @@ function parse_bbc($message, $smileys = true, $cache_id = '', $parse_tags = arra
 		$message = '&nbsp;' . substr($message, 1);
 
 	// Cleanup whitespace.
-	$message = strtr($message, array('  ' => ' &nbsp;', "\r" => '', "\n" => '<br />', '<br /> ' => '<br />&nbsp;', '&#13;' => "\n"));
+	$message = strtr($message, array('  ' => '&nbsp; ', "\r" => '', "\n" => '<br />', '<br /> ' => '<br />&nbsp;', '&#13;' => "\n"));
 
 	// Finish footnotes if we have any.
 	if (strpos($message, '<sup class="bbc_footnotes">') !== false)
@@ -2066,7 +2027,7 @@ function footnote_callback($matches)
 function parsesmileys(&$message)
 {
 	global $modSettings, $txt, $user_info;
-	static $smileyPregSearch = null, $smileyPregReplacements = array(), $callback;
+	static $smileyPregSearch = null, $smileyPregReplacements = array();
 
 	$db = database();
 
@@ -2137,34 +2098,13 @@ function parsesmileys(&$message)
 		}
 
 		$smileyPregSearch = '~(?<=[>:\?\.\s' . $non_breaking_space . '[\]()*\\\;]|^)(' . implode('|', $searchParts) . ')(?=[^[:alpha:]0-9]|$)~';
-		$callback = new ParseSmileysReplacement;
-		$callback->replacements = $smileyPregReplacements;
 	}
 
 	// Replace away!
-	// @todo When support changes to PHP 5.3+, this can be changed this to "use" keyword and simpifly this.
-	$message = preg_replace_callback($smileyPregSearch, array($callback, 'callback'), $message);
-}
-
-/**
- * Smiley Replacment Callback.
- *
- * This is needed until ELK supports PHP 5.3+ and we can change to "use"
- */
-class ParseSmileysReplacement
-{
-	/**
-	 * Our callback that does the actual smiley replacments.
-	 *
-	 * @param string[] $matches
-	 */
-	public function callback($matches)
+	$message = preg_replace_callback($smileyPregSearch, function ($matches) use ($smileyPregReplacements)
 	{
-		if (isset($this->replacements[$matches[0]]))
-			return $this->replacements[$matches[0]];
-		else
-			return '';
-	}
+		return $smileyPregReplacements[$matches[0]];
+	}, $message);
 }
 
 /**
@@ -2205,7 +2145,7 @@ function highlight_php_code($code)
  */
 function redirectexit($setLocation = '', $refresh = false)
 {
-	global $scripturl, $context, $modSettings, $db_show_debug, $db_cache;
+	global $scripturl, $context, $modSettings, $db_show_debug;
 
 	// In case we have mail to send, better do that - as obExit doesn't always quite make it...
 	if (!empty($context['flush_mail']))
@@ -2227,9 +2167,9 @@ function redirectexit($setLocation = '', $refresh = false)
 	if (!empty($modSettings['queryless_urls']) && (empty($context['server']['is_cgi']) || ini_get('cgi.fix_pathinfo') == 1 || @get_cfg_var('cgi.fix_pathinfo') == 1) && (!empty($context['server']['is_apache']) || !empty($context['server']['is_lighttpd']) || !empty($context['server']['is_litespeed'])))
 	{
 		if (defined('SID') && SID != '')
-			$setLocation = preg_replace_callback('~^' . preg_quote($scripturl, '/') . '\?(?:' . SID . '(?:;|&|&amp;))((?:board|topic)=[^#]+?)(#[^"]*?)?$~', 'redirectexit_callback', $setLocation);
+			$setLocation = preg_replace_callback('~^' . preg_quote($scripturl, '~') . '\?(?:' . SID . '(?:;|&|&amp;))((?:board|topic)=[^#]+?)(#[^"]*?)?$~', 'redirectexit_callback', $setLocation);
 		else
-			$setLocation = preg_replace_callback('~^' . preg_quote($scripturl, '/') . '\?((?:board|topic)=[^#"]+?)(#[^"]*?)?$~', 'redirectexit_callback', $setLocation);
+			$setLocation = preg_replace_callback('~^' . preg_quote($scripturl, '~') . '\?((?:board|topic)=[^#"]+?)(#[^"]*?)?$~', 'redirectexit_callback', $setLocation);
 	}
 
 	// Maybe integrations want to change where we are heading?
@@ -2242,8 +2182,8 @@ function redirectexit($setLocation = '', $refresh = false)
 		header('Location: ' . str_replace(' ', '%20', $setLocation));
 
 	// Debugging.
-	if (isset($db_show_debug) && $db_show_debug === true)
-		$_SESSION['debug_redirect'] = $db_cache;
+	if ($db_show_debug === true)
+		$_SESSION['debug_redirect'] = Debug::get()->get_db();
 
 	obExit(false);
 }
@@ -2281,7 +2221,7 @@ function redirectexit_callback($matches)
  */
 function obExit($header = null, $do_footer = null, $from_index = false, $from_fatal_error = false)
 {
-	global $context, $txt;
+	global $context, $txt, $db_show_debug;
 
 	static $header_done = false, $footer_done = false, $level = 0, $has_fatal_error = false;
 
@@ -2333,9 +2273,11 @@ function obExit($header = null, $do_footer = null, $from_index = false, $from_fa
 			$footer_done = true;
 			template_footer();
 
+			// Add $db_show_debug = true; to Settings.php if you want to show the debugging information.
 			// (since this is just debugging... it's okay that it's after </html>.)
-			if (!isset($_REQUEST['xml']))
-				displayDebug();
+			if ($db_show_debug === true)
+				if (!isset($_REQUEST['xml']) && ((!isset($_GET['action']) || $_GET['action'] != 'viewquery') && !isset($_GET['api'])))
+					Debug::get()->display();
 		}
 	}
 
@@ -2420,7 +2362,10 @@ function setupThemeContext($forceload = false)
 	}
 
 	if (!empty($context['news_lines']))
+	{
 		$context['random_news_line'] = $context['news_lines'][mt_rand(0, count($context['news_lines']) - 1)];
+		$context['upper_content_callbacks'][] = 'news_fader';
+	}
 
 	if (!$user_info['is_guest'])
 	{
@@ -2445,18 +2390,15 @@ function setupThemeContext($forceload = false)
 		{
 			$context['user']['avatar']['href'] = $user_info['avatar']['url'];
 
-			if ($modSettings['avatar_action_too_large'] == 'option_html_resize' || $modSettings['avatar_action_too_large'] == 'option_js_resize')
-			{
-				if (!empty($modSettings['avatar_max_width_external']))
-					$context['user']['avatar']['width'] = $modSettings['avatar_max_width_external'];
+			if (!empty($modSettings['avatar_max_width']))
+				$context['user']['avatar']['width'] = $modSettings['avatar_max_width'];
 
-				if (!empty($modSettings['avatar_max_height_external']))
-					$context['user']['avatar']['height'] = $modSettings['avatar_max_height_external'];
-			}
+			if (!empty($modSettings['avatar_max_height']))
+				$context['user']['avatar']['height'] = $modSettings['avatar_max_height'];
 		}
 		// Gravatars URL.
 		elseif ($user_info['avatar']['url'] === 'gravatar')
-			$context['user']['avatar']['href'] = '//www.gravatar.com/avatar/' . md5(strtolower($user_settings['email_address'])) . 'd=' . $modSettings['avatar_max_height_external'] . (!empty($modSettings['gravatar_rating']) ? ('&amp;r=' . $modSettings['gravatar_rating']) : '');
+			$context['user']['avatar']['href'] = '//www.gravatar.com/avatar/' . md5(strtolower($user_settings['email_address'])) . 'd=' . $modSettings['avatar_max_height'] . (!empty($modSettings['gravatar_rating']) ? ('&amp;r=' . $modSettings['gravatar_rating']) : '');
 		// Otherwise we assume it's server stored?
 		elseif ($user_info['avatar']['url'] !== '')
 			$context['user']['avatar']['href'] = $modSettings['avatar_url'] . '/' . htmlspecialchars($user_info['avatar']['url']);
@@ -2514,17 +2456,6 @@ function setupThemeContext($forceload = false)
 			});
 		});', true);
 
-	// Resize avatars the fancy, but non-GD requiring way.
-	if ($modSettings['avatar_action_too_large'] == 'option_js_resize' && (!empty($modSettings['avatar_max_width_external']) || !empty($modSettings['avatar_max_height_external'])))
-	{
-		// @todo Move this over to script.js?
-		addInlineJavascript('
-		var elk_avatarMaxWidth = ' . (int) $modSettings['avatar_max_width_external'] . ',
-			elk_avatarMaxHeight = ' . (int) $modSettings['avatar_max_height_external'] . ';' . (!isBrowser('is_ie8') ? '
-		window.addEventListener("load", elk_avatarResize, false);' : '
-		window.attachEvent("load", elk_avatarResize);'), true);
-	}
-
 	// This looks weird, but it's because BoardIndex.controller.php references the variable.
 	$context['common_stats']['latest_member'] = array(
 		'id' => $modSettings['latestMember'],
@@ -2541,7 +2472,7 @@ function setupThemeContext($forceload = false)
 	$context['common_stats']['boardindex_total_posts'] = sprintf($txt['boardindex_total_posts'], $context['common_stats']['total_posts'], $context['common_stats']['total_topics'], $context['common_stats']['total_members']);
 
 	if (empty($settings['theme_version']))
-		addJavascriptVar(array('elk_scripturl' => $scripturl));
+		addJavascriptVar(array('elk_scripturl' => '\'' . $scripturl . '\''));
 
 	if (!isset($context['page_title']))
 		$context['page_title'] = '';
@@ -2699,12 +2630,14 @@ function theme_copyright()
  */
 function template_footer()
 {
-	global $context, $settings, $modSettings, $time_start, $db_count;
+	global $context, $settings, $modSettings, $time_start;
+
+	$db = database();
 
 	// Show the load time?  (only makes sense for the footer.)
 	$context['show_load_time'] = !empty($modSettings['timeLoadPageEnable']);
 	$context['load_time'] = round(microtime(true) - $time_start, 3);
-	$context['load_queries'] = $db_count;
+	$context['load_queries'] = $db->num_queries();
 
 	if (isset($settings['use_default_images']) && $settings['use_default_images'] == 'defaults' && isset($settings['default_template']))
 	{
@@ -2782,6 +2715,8 @@ function template_javascript($do_defered = false)
 		{
 			$combiner = new Site_Combiner(CACHEDIR, $boardurl . '/cache');
 			$combine_name = $combiner->site_js_combine($context['javascript_files'], $do_defered);
+
+			call_integration_hook('post_javascript_combine', array(&$combine_name, $combiner));
 
 			if (!empty($combine_name))
 				echo '
@@ -2869,6 +2804,8 @@ function template_css()
 			$combiner = new Site_Combiner(CACHEDIR, $boardurl . '/cache');
 			$combine_name = $combiner->site_css_combine($context['css_files']);
 
+			call_integration_hook('post_css_combine', array(&$combine_name, $combiner));
+
 			if (!empty($combine_name))
 				echo '
 	<link rel="stylesheet" href="', $combine_name, '" id="csscombined" />';
@@ -2910,6 +2847,11 @@ function template_admin_warning_above()
 	{
 		$context['security_controls_ban']['type'] = 'serious';
 		template_show_error('security_controls_ban');
+	}
+
+	if (!empty($context['new_version_updates']))
+	{
+		template_show_error('new_version_updates');
 	}
 
 	// Any special notices to remind the admin about?
@@ -3185,6 +3127,9 @@ function setupMenuContext()
 	$context['allow_moderation_center'] = $context['user']['can_mod'];
 	$context['allow_pm'] = allowedTo('pm_read');
 
+	if ($context['allow_search'])
+		$context['theme_header_callbacks'] = elk_array_insert($context['theme_header_callbacks'], 'login_bar', array('search_bar'), 'after');
+
 	$cacheTime = $modSettings['lastActive'] * 60;
 
 	// Update the Moderation menu items with action item totals
@@ -3359,7 +3304,7 @@ function setupMenuContext()
 
 		$buttons += array(
 			'profile' => array(
-				'title' => (!empty($user_info['avatar']['image']) ? $user_info['avatar']['image'] . ' ' : '') . (!empty($modSettings['displayMemberNames']) ? $user_info['name'] : $txt['account_short']),
+				'title' => (!empty($user_info['avatar']['href']) ? '<img class="avatar" src="' . $user_info['avatar']['href'] . '" alt="" /> ' : '') . (!empty($modSettings['displayMemberNames']) ? $user_info['name'] : $txt['account_short']),
 				'href' => $scripturl . '?action=profile',
 				'data-icon' => '&#xf007;',
 				'show' => $context['allow_edit_profile'],
@@ -3379,7 +3324,6 @@ function setupMenuContext()
 						'href' => $scripturl . '?action=profile;area=theme',
 						'show' => allowedTo(array('profile_extra_any', 'profile_extra_own', 'profile_extra_any')),
 					),
-					// The old "logout" is meh. Not a real word. "Log out" is better.
 					'logout' => array(
 						'title' => $txt['logout'],
 						'href' => $scripturl . '?action=logout',
@@ -3387,8 +3331,8 @@ function setupMenuContext()
 					),
 				),
 			),
-			// @todo - Will look at doing something here, to provide instant access to inbox when using click menus.
-			// @todo - A small pop-up anchor seems like the obvious way to handle it. ;)
+			// @todo Look at doing something here, to provide instant access to inbox when using click menus.
+			// @todo A small pop-up anchor seems like the obvious way to handle it. ;)
 			'pm' => array(
 				'title' => $txt['pm_short'],
 				'counter' => 'unread_messages',
@@ -3408,15 +3352,13 @@ function setupMenuContext()
 					),
 				),
 			),
-
-			'mention' => array(
+			'mentions' => array(
 				'title' => $txt['mention'],
 				'counter' => 'mentions',
 				'href' => $scripturl . '?action=mentions',
 				'data-icon' => '&#xf0f3;',
 				'show' => !$user_info['is_guest'] && !empty($modSettings['mentions_enabled']),
 			),
-
 			// The old language string made no sense, and was too long.
 			// "New posts" is better, because there are probably a pile
 			// of old unread posts, and they wont be reached from this button.
@@ -3426,7 +3368,6 @@ function setupMenuContext()
 				'data-icon' => '&#xf086;',
 				'show' => !$user_info['is_guest'],
 			),
-
 			// The old language string made no sense, and was too long.
 			// "New replies" is better, because there are "updated topics"
 			// that the user has never posted in and doesn't care about.
@@ -3436,9 +3377,6 @@ function setupMenuContext()
 				'data-icon' => '&#xf0e6;',
 				'show' => !$user_info['is_guest'],
 			),
-
-			// "Log out" would be better here.
-			// "Login" is not a word, and sort of runs together into a bleh.
 			'login' => array(
 				'title' => $txt['login'],
 				'href' => $scripturl . '?action=login',
@@ -3452,7 +3390,12 @@ function setupMenuContext()
 				'data-icon' => '&#xf090;',
 				'show' => $user_info['is_guest'] && $context['can_register'],
 			),
-
+			'like_stats' => array(
+				'title' => $txt['like_post_stats'],
+				'href' => $scripturl . '?action=likes;sa=likestats',
+				// 'data-icon' => '&#xf090;',
+				'show' => allowedTo('like_posts_stats'),
+			),
 			'contact' => array(
 				'title' => $txt['contact'],
 				'href' => $scripturl . '?action=contact',
@@ -3539,8 +3482,6 @@ function setupMenuContext()
 
 	if (isset($context['menu_buttons'][$context['current_action']]))
 		$current_action = $context['current_action'];
-// 	elseif ($context['current_action'] == 'search2')
-// 		$current_action = 'search';
 	elseif ($context['current_action'] == 'profile')
 		$current_action = 'pm';
 	elseif ($context['current_action'] == 'theme')
@@ -3587,7 +3528,7 @@ function elk_seed_generator()
  */
 function call_integration_hook($hook, $parameters = array())
 {
-	global $modSettings, $settings, $db_show_debug, $context;
+	global $modSettings, $settings, $db_show_debug;
 
 	static $path_replacements = array(
 		'BOARDDIR' => BOARDDIR,
@@ -3600,7 +3541,7 @@ function call_integration_hook($hook, $parameters = array())
 	);
 
 	if ($db_show_debug === true)
-		$context['debug']['hooks'][] = $hook;
+		Debug::get()->add('hooks', $hook);
 
 	$results = array();
 	if (empty($modSettings[$hook]))
@@ -3646,7 +3587,7 @@ function call_integration_hook($hook, $parameters = array())
  */
 function call_integration_include_hook($hook)
 {
-	global $modSettings, $settings, $db_show_debug, $context;
+	global $modSettings, $settings, $db_show_debug;
 
 	static $path_replacements = array(
 		'BOARDDIR' => BOARDDIR,
@@ -3659,7 +3600,7 @@ function call_integration_include_hook($hook)
 	);
 
 	if ($db_show_debug === true)
-		$context['debug']['hooks'][] = $hook;
+		Debug::get()->add('hooks', $hook);
 
 	// Any file to include?
 	if (!empty($modSettings[$hook]))
@@ -3683,7 +3624,7 @@ function call_integration_include_hook($hook)
  */
 function call_integration_buffer()
 {
-	global $modSettings, $settings;
+	global $modSettings, $settings, $db_show_debug;
 
 	static $path_replacements = array(
 		'BOARDDIR' => BOARDDIR,
@@ -3694,6 +3635,10 @@ function call_integration_buffer()
 		'CONTROLLERDIR' => CONTROLLERDIR,
 		'SUBSDIR' => SUBSDIR,
 	);
+
+	if ($db_show_debug === true)
+		Debug::get()->add('hooks', 'integrate_buffer');
+
 	if (!empty($settings['theme_dir']))
 		$path_replacements['$themedir'] = $settings['theme_dir'];
 
@@ -3972,7 +3917,7 @@ function fixchar__callback($matches)
  * Strips out invalid html entities, replaces others with html style &#123; codes
  *
  * What it does:
- * - Callback function used of preg_replace_callback in smcFunc $ent_checks,
+ * - Callback function used of preg_replace_callback in various $ent_checks,
  * - for example strpos, strlen, substr etc
  *
  * @param mixed[] $matches array of matches for a preg_match_all
@@ -4168,6 +4113,7 @@ function replaceBasicActionUrl($string)
 		$find = array(
 			'{forum_name}',
 			'{forum_name_html_safe}',
+			'{forum_name_html_unsafe}',
 			'{script_url}',
 			'{board_url}',
 			'{login_url}',
@@ -4187,6 +4133,7 @@ function replaceBasicActionUrl($string)
 		$replace = array(
 			$context['forum_name'],
 			$context['forum_name_html_safe'],
+			un_htmlspecialchars($context['forum_name_html_safe']),
 			$scripturl,
 			$boardurl,
 			$scripturl . '?action=login',
@@ -4209,46 +4156,88 @@ function replaceBasicActionUrl($string)
 	return str_replace($find, $replace, $string);
 }
 
+/**
+ * Elkarte autoloader
+ *
+ * What it does:
+ * - Automatically includes the required files for a given class
+ * - Follows controller naming conventions to find the right file to load
+ *
+ * @param string $class The name of the class
+ */
 function elk_autoloader($class)
 {
-	if (substr($class, -11) === '_Controller')
-	{
-		$file_name = str_replace('_', '', str_replace('_Controller', '.controller', $class)) . '.php';
+	// Break the class name in to its parts
+	$name = explode('_', $class);
+	$surname = array_pop($name);
+	$givenname = implode('', $name);
 
-		$file_name = str_replace('_', '', $file_name);
-		if (file_exists(CONTROLLERDIR . '/' . $file_name))
-			$file_name = CONTROLLERDIR . '/' . $file_name;
-		elseif (file_exists(ADMINDIR . '/' . $file_name))
-			$file_name = ADMINDIR . '/' . $file_name;
-	}
-	elseif (strpos($class, 'Verification_Controls_') !== false)
+	switch ($givenname)
 	{
-		$file_name = SUBSDIR . '/VerificationControls.class.php';
-	}
-	elseif (strpos($class, 'Database_') !== false || strpos($class, 'DbSearch_') !== false || strpos($class, 'DbTable_') !== false)
-	{
-		$file_name = '';
-	}
-	elseif (substr($class, -7) === '_Search')
-	{
-		$file_name = SUBSDIR . '/SearchAPI-' . substr($class, 0, -7) . '.class.php';
-	}
-	elseif (substr($class, -8) === '_Display' || substr($class, -8) === '_Payment')
-	{
-		$file_name = SUBSDIR . '/Subscriptions-' . substr($class, 0, -8) . '.class.php';
-	}
-	else
-	{
-		$file_name = str_replace('_', '', $class);
-		if (file_exists(SUBSDIR . '/' . $file_name . '.class.php'))
-			$file_name = SUBSDIR . '/' . $file_name . '.class.php';
-		elseif (file_exists(SOURCEDIR . '/' . $file_name . '.class.php'))
-			$file_name = SOURCEDIR . '/' . $file_name . '.class.php';
-		elseif (file_exists(SOURCEDIR . '/' . $file_name . '.php'))
-			$file_name = SOURCEDIR . '/' . $file_name . '.php';
-		else
+		case 'VerificationControls':
+			$file_name = SUBSDIR . '/VerificationControls.class.php';
+			break;
+		// We don't handle these
+		case 'Database':
+		case 'DbSearch':
+		case 'DbTable':
 			$file_name = '';
+			break;
+		// Simple names like Util.class, Action.class, Request.class ...
+		case '':
+			$file_name = $surname;
+
+			if (file_exists(SUBSDIR . '/' . $file_name . '.class.php'))
+				$file_name = SUBSDIR . '/' . $file_name . '.class.php';
+			elseif (file_exists(SOURCEDIR . '/' . $file_name . '.class.php'))
+				$file_name = SOURCEDIR . '/' . $file_name . '.class.php';
+			elseif (file_exists(SOURCEDIR . '/' . $file_name . '.php'))
+				$file_name = SOURCEDIR . '/' . $file_name . '.php';
+			else
+				$file_name = '';
+			break;
+		// Some_Other
+		default:
+			switch ($surname)
+			{
+				// Some_Controller => Some.controller.php
+				case 'Controller':
+					$file_name = $givenname . '.controller.php';
+
+					// Try controller dir first, then admin
+					if (file_exists(CONTROLLERDIR . '/' . $file_name))
+						$file_name = CONTROLLERDIR . '/' . $file_name;
+					elseif (file_exists(ADMINDIR . '/' . $file_name))
+						$file_name = ADMINDIR . '/' . $file_name;
+					break;
+				// Some_Search => SearchAPI-Some.class
+				case 'Search':
+					$file_name = SUBSDIR . '/SearchAPI-' . $givenname . '.class.php';
+					break;
+				// Some_Cache => SomeCache.class.php
+				case 'Cache':
+					$file_name = SUBSDIR . '/cache/' . $givenname . $surname . '.class.php';
+					break;
+				// Some_Display => Subscriptions-Some.class.php
+				case 'Display':
+				case 'Payment':
+					$file_name = SUBSDIR . '/Subscriptions-' . implode('_', $name) . '.class.php';
+					break;
+				// All the rest, like Browser_Detector, Template_Layers, Site_Dispatcher ...
+				default:
+					$file_name = $givenname . $surname;
+
+					if (file_exists(SUBSDIR . '/' . $file_name . '.class.php'))
+						$file_name = SUBSDIR . '/' . $file_name . '.class.php';
+					elseif (file_exists(SOURCEDIR . '/' . $file_name . '.class.php'))
+						$file_name = SOURCEDIR . '/' . $file_name . '.class.php';
+					elseif (file_exists(SOURCEDIR . '/' . $file_name . '.php'))
+						$file_name = SOURCEDIR . '/' . $file_name . '.php';
+					else
+						$file_name = '';
+			}
 	}
+
 	if (!empty($file_name))
 		require_once($file_name);
 }
@@ -4256,11 +4245,14 @@ function elk_autoloader($class)
 /**
  * This function creates a new GenericList from all the passed options.
  *
+ * What it does:
+ * - Calls integration hook integrate_list_"unique_list_id" to allow easy modifiying
+ *
  * @param mixed[] $listOptions associative array of option => value
  */
 function createList($listOptions)
 {
-	call_integration_hook('integrate_list_' . $listOptions['id'], array($listOptions));
+	call_integration_hook('integrate_list_' . $listOptions['id'], array(&$listOptions));
 
 	$list = new Generic_List($listOptions);
 
@@ -4270,10 +4262,73 @@ function createList($listOptions)
 /**
  * This handy function retrieves a Request instance and passes it on.
  *
+ * What it does:
  * - To get hold of a Request, you can use this function or directly Request::instance().
  * - This is for convenience, it simply delegates to Request::instance().
  */
 function request()
 {
 	return Request::instance();
+}
+
+/**
+ * Meant to replace any usage of $db_last_error.
+ *
+ * What it does:
+ * - Reads the file db_last_error.txt, if a time() is present returns it,
+ * otherwise returns 0.
+ */
+function db_last_error()
+{
+	$time = trim(file_get_contents(BOARDDIR . '/db_last_error.txt'));
+	if (preg_match('~^\d{10}$~', $time) === 1)
+		return $time;
+	else
+		return 0;
+}
+
+/**
+ * This function has the only task to retrieve the correct prefix to be used
+ * in responses.
+ *
+ * @return string - The prefix in the default language of the forum
+ */
+function response_prefix()
+{
+	global $language, $user_info, $txt;
+	static $response_prefix = null;
+
+	// Get a response prefix, but in the forum's default language.
+	if ($response_prefix === null && !($response_prefix = cache_get_data('response_prefix')))
+	{
+		if ($language === $user_info['language'])
+			$response_prefix = $txt['response_prefix'];
+		else
+		{
+			loadLanguage('index', $language, false);
+			$response_prefix = $txt['response_prefix'];
+			loadLanguage('index');
+		}
+		cache_put_data('response_prefix', $response_prefix, 600);
+	}
+
+	return $response_prefix;
+}
+
+/**
+ * A very simple function to determine if an email address is "valid" for Elkarte.
+ *
+ * - A valid email for ElkArte is something that resebles an email (filter_var) and
+ * is less than 255 characters (for database limits)
+ *
+ * @param string $value - The string to evaluate as valid email
+ * @return bool|string - The email if valid, false if not a valid email
+ */
+function isValidEmail($value)
+{
+	$value = trim($value);
+	if (filter_var($value, FILTER_VALIDATE_EMAIL) && Util::strlen($value) < 255)
+		return $value;
+	else
+		return false;
 }

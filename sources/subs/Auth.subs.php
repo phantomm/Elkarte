@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -521,6 +521,7 @@ function validatePassword($password, $username, $restrict_in = array())
 	// Perform basic requirements first.
 	if (Util::strlen($password) < (empty($modSettings['password_strength']) ? 4 : 8))
 	{
+		loadLanguage('Errors');
 		$txt['profile_error_password_short'] = sprintf($txt['profile_error_password_short'], empty($modSettings['password_strength']) ? 4 : 8);
 		return 'short';
 	}
@@ -710,52 +711,6 @@ function elk_setcookie($name, $value = '', $expire = 0, $path = '', $domain = ''
 }
 
 /**
- * Set the passed users online or not, in the online log table
- *
- * @package Authorization
- * @param int[]|int $ids ids of the member(s) to log
- * @param bool $on = false if true, add the user(s) to online log, if false, remove 'em
- */
-function logOnline($ids, $on = false)
-{
-	$db = database();
-
-	if (!is_array($ids))
-		$ids = array($ids);
-
-	if (empty($on))
-	{
-		// set the user(s) out of log_online
-		$db->query('', '
-			DELETE FROM {db_prefix}log_online
-			WHERE id_member IN ({array_int:members})',
-			array(
-				'members' => $ids,
-			)
-		);
-	}
-}
-
-/**
- * Delete expired/outdated session from log_online
- *
- * @package Authorization
- * @param string $session
- */
-function deleteOnline($session)
-{
-	$db = database();
-
-	$db->query('', '
-		DELETE FROM {db_prefix}log_online
-		WHERE session = {string:session}',
-		array(
-			'session' => $session,
-		)
-	);
-}
-
-/**
  * This functions determines whether this is the first login of the given user.
  *
  * @package Authorization
@@ -890,7 +845,7 @@ function loadExistingMember($name, $is_id = false)
 	{
 		$request = $db->query('', '
 			SELECT passwd, id_member, id_group, lngfile, is_activated, email_address, additional_groups, member_name, password_salt,
-				openid_uri, passwd_flood
+				openid_uri, passwd_flood, otp_secret, enable_otp
 			FROM {db_prefix}members
 			WHERE id_member = {int:id_member}
 			LIMIT 1',
@@ -904,7 +859,7 @@ function loadExistingMember($name, $is_id = false)
 		// Try to find the user, assuming a member_name was passed...
 		$request = $db->query('', '
 			SELECT passwd, id_member, id_group, lngfile, is_activated, email_address, additional_groups, member_name, password_salt,
-				openid_uri, passwd_flood
+				openid_uri, passwd_flood, otp_secret, enable_otp
 			FROM {db_prefix}members
 			WHERE ' . (defined('DB_CASE_SENSITIVE') ? 'LOWER(member_name) = LOWER({string:user_name})' : 'member_name = {string:user_name}') . '
 			LIMIT 1',
@@ -919,7 +874,7 @@ function loadExistingMember($name, $is_id = false)
 
 			$request = $db->query('', '
 				SELECT passwd, id_member, id_group, lngfile, is_activated, email_address, additional_groups, member_name, password_salt, openid_uri,
-				passwd_flood
+				passwd_flood, otp_secret, enable_otp
 				FROM {db_prefix}members
 				WHERE email_address = {string:user_name}
 				LIMIT 1',

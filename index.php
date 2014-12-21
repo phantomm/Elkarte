@@ -15,37 +15,49 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
-$forum_version = 'ElkArte 1.0 RC 1';
+$forum_version = 'ElkArte 1.0.2';
+define('FORUM_VERSION', $forum_version);
 
 // First things first, but not necessarily in that order.
 define('ELK', 1);
 
 // Shortcut for the browser cache stale
-define('CACHE_STALE', '?10RC1');
+define('CACHE_STALE', '?102');
 
-if (function_exists('set_magic_quotes_runtime'))
-	@set_magic_quotes_runtime(0);
 error_reporting(E_ALL | E_STRICT);
-$time_start = microtime(true);
+
+// Directional only script time usage for display
+if (function_exists('getrusage'))
+	$rusage_start = getrusage();
+else
+	$rusage_start = array();
 
 // Turn on output buffering.
 ob_start();
 
-// We don't need no globals.
+if (function_exists('set_magic_quotes_runtime'))
+	@set_magic_quotes_runtime(0);
+$time_start = microtime(true);
+$db_show_debug = false;
+
+// Shortcut for the browser cache stale
+define('CACHE_STALE', '?10RC1');
+
+// We don't need no globals. (a bug in "old" versions of PHP)
 foreach (array('db_character_set', 'cachedir') as $variable)
 	if (isset($GLOBALS[$variable]))
 		unset($GLOBALS[$variable], $GLOBALS[$variable]);
 
-// Ready to load the site settings.
-require_once(dirname(__FILE__) . '/Settings.php');
+// First thing: if the install dir exists, just send anybody there
+if (file_exists(dirname(__FILE__) . '/install'))
+	header('Location: http' . (!empty($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) == 'on' ? 's' : '') . '://' . (empty($_SERVER['HTTP_HOST']) ? $_SERVER['SERVER_NAME'] . (empty($_SERVER['SERVER_PORT']) || $_SERVER['SERVER_PORT'] == '80' ? '' : ':' . $_SERVER['SERVER_PORT']) : $_SERVER['HTTP_HOST']) . (strtr(dirname($_SERVER['PHP_SELF']), '\\', '/') == '/' ? '' : strtr(dirname($_SERVER['PHP_SELF']), '\\', '/')) . '/install/install.php');
 
-// Directional only script time usage for display
-if (!empty($db_show_debug) && function_exists('getrusage'))
-	$rusage_start = getrusage();
+// Get the forum's settings for database and file paths.
+require_once(dirname(__FILE__) . '/Settings.php');
 
 // Make sure the paths are correct... at least try to fix them.
 if (!file_exists($boarddir) && file_exists(dirname(__FILE__) . '/agreement.txt'))
@@ -79,10 +91,16 @@ require_once(SOURCEDIR . '/Subs.php');
 require_once(SOURCEDIR . '/Errors.php');
 require_once(SOURCEDIR . '/Logging.php');
 require_once(SOURCEDIR . '/Load.php');
-require_once(SUBSDIR . '/Cache.subs.php');
 require_once(SOURCEDIR . '/Security.php');
 
 spl_autoload_register('elk_autoloader');
+
+require_once(SUBSDIR . '/Cache.subs.php');
+
+if ($db_show_debug === true)
+{
+	Debug::get()->rusage('start', $rusage_start);
+}
 
 // Forum in extended maintenance mode? Our trip ends here with a bland message.
 if (!empty($maintenance) && $maintenance == 2)

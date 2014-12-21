@@ -15,7 +15,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
@@ -74,6 +74,7 @@ class Register_Controller extends Action_Controller
 
 		// Do we need them to agree to the registration agreement, first?
 		$context['require_agreement'] = !empty($modSettings['requireAgreement']);
+		$context['checkbox_agreement'] = !empty($modSettings['checkboxAgreement']);
 		$context['registration_passed_agreement'] = !empty($_SESSION['registration_agreed']);
 		$context['show_coppa'] = !empty($modSettings['coppaAge']);
 		$context['show_contact_button'] = !empty($modSettings['enable_contactform']) && $modSettings['enable_contactform'] == 'registration';
@@ -87,7 +88,7 @@ class Register_Controller extends Action_Controller
 		}
 
 		// What step are we at?
-		$current_step = isset($_REQUEST['step']) ? (int) $_REQUEST['step'] : ($context['require_agreement'] ? 1 : 2);
+		$current_step = isset($_REQUEST['step']) ? (int) $_REQUEST['step'] : ($context['require_agreement'] && !$context['checkbox_agreement'] ? 1 : 2);
 
 		// Does this user agree to the registration agreement?
 		if ($current_step == 1 && (isset($_POST['accept_agreement']) || isset($_POST['accept_agreement_coppa'])))
@@ -109,13 +110,14 @@ class Register_Controller extends Action_Controller
 			}
 		}
 		// Make sure they don't squeeze through without agreeing.
-		elseif ($current_step > 1 && $context['require_agreement'] && !$context['registration_passed_agreement'])
+		elseif ($current_step > 1 && $context['require_agreement'] && !$context['checkbox_agreement'] && !$context['registration_passed_agreement'])
 			$current_step = 1;
 
 		// Show the user the right form.
 		$context['sub_template'] = $current_step == 1 ? 'registration_agreement' : 'registration_form';
 		$context['page_title'] = $current_step == 1 ? $txt['registration_agreement'] : $txt['registration_form'];
 		loadJavascriptFile('register.js');
+		addInlineJavascript('disableAutoComplete();', true);
 
 		// Add the register chain to the link tree.
 		$context['linktree'][] = array(
@@ -258,6 +260,10 @@ class Register_Controller extends Action_Controller
 		checkSession();
 		if (!validateToken('register', 'post', true, false))
 			$reg_errors->addError('token_verification');
+
+		// If we're using an agreement checkbox, did they check it?
+		if (!empty($modSettings['checkboxAgreement']) && !empty($_POST['checkbox_agreement']))
+			$_SESSION['registration_agreed'] = true;
 
 		// Well, if you don't agree, you can't register.
 		if (!empty($modSettings['requireAgreement']) && empty($_SESSION['registration_agreed']))
@@ -909,6 +915,7 @@ class Register_Controller extends Action_Controller
 		else
 		{
 			$context['sub_template'] = 'contact_form';
+			$context['page_title'] = $txt['admin_contact_form'];
 
 			require_once(SUBSDIR . '/VerificationControls.class.php');
 			$verificationOptions = array(
@@ -961,13 +968,15 @@ class Register_Controller extends Action_Controller
 			'pm_ignore_list',
 			'smiley_set',
 			'personal_text', 'avatar',
-			'lngfile',
+			'lngfile', 'location',
 			'secret_question', 'secret_answer',
+			'website_url', 'website_title',
 		);
 		$possible_ints = array(
 			'pm_email_notify',
 			'notify_types',
 			'id_theme',
+			'gender',
 		);
 		$possible_floats = array(
 			'time_offset',

@@ -11,7 +11,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
@@ -188,6 +188,18 @@ function template_credits()
 								</div>
 							</div>';
 
+	// Display latest important updates
+	if (!empty($context['latest_updates']))
+		echo '
+							<h3 id="latest_updates" class="category_header">
+								', $txt['latest_updates'], '
+							</h3>
+							<div class="windowbg2">
+								<div class="content">
+									', $context['latest_updates'], '
+								</div>
+							</div>';
+
 	// Point the admin to common support resources.
 	echo '
 							<div id="support_resources">
@@ -199,17 +211,6 @@ function template_credits()
 								<div class="content">
 									<p>', $txt['support_resources_p1'], '</p>
 									<p>', $txt['support_resources_p2'], '</p>
-								</div>
-							</div>';
-
-	// Display latest support questions from ElkArte
-	echo '
-							<h3 class="category_header">
-								<a class="hdicon cat_img_helptopics help" href="', $scripturl, '?action=quickhelp;help=latest_support" onclick="return reqOverlayDiv(this.href);"></a>', $txt['support_latest'], '
-							</h3>
-							<div class="windowbg">
-								<div class="content">
-									<div id="latestSupport">', $txt['support_latest_fetch'], '</div>
 								</div>
 							</div>';
 
@@ -826,10 +827,7 @@ function template_not_done()
 		</div>
 	</div>
 	<script><!-- // --><![CDATA[
-		var countdown = ', $context['continue_countdown'], ',
-			txt_message = "', $txt['not_done_continue'], '";
-
-		doAutoSubmit();
+		doAutoSubmit(', $context['continue_countdown'], ', ', JavaScriptEscape($txt['not_done_continue']), ');
 	// ]]></script>';
 }
 
@@ -840,10 +838,7 @@ function template_show_settings()
 {
 	global $context, $txt, $settings, $scripturl;
 
-	if (!empty($context['settings_pre_javascript']))
-		echo '
-	<script><!-- // --><![CDATA[', $context['settings_pre_javascript'], '// ]]></script>';
-
+	// @todo this should be replaced by layers
 	if (!empty($context['settings_insert_above']))
 		echo $context['settings_insert_above'];
 
@@ -967,11 +962,11 @@ function template_show_settings()
 				// Show the [?] button.
 				if ($config_var['help'])
 					echo '
-							<a id="setting_', $config_var['name'], '" href="', $scripturl, '?action=quickhelp;help=', $config_var['help'], '" onclick="return reqOverlayDiv(this.href);" class="help"><img src="', $settings['images_url'], '/helptopics.png" class="icon" alt="', $txt['help'], '" /></a><span', ($config_var['disabled'] ? ' style="color: #777777;"' : ($config_var['invalid'] ? ' class="error"' : '')), '><label for="', $config_var['name'], '">', $config_var['label'], '</label>', $subtext, ($config_var['type'] == 'password' ? '<br /><em>' . $txt['admin_confirm_password'] . '</em>' : ''), '</span>
+							<a id="setting_', $config_var['name'], '" href="', $scripturl, '?action=quickhelp;help=', $config_var['help'], '" onclick="return reqOverlayDiv(this.href);" class="help"><img src="', $settings['images_url'], '/helptopics.png" class="icon" alt="', $txt['help'], '" /></a><span', ($config_var['disabled'] ? ' class="disabled"' : ($config_var['invalid'] ? ' class="error"' : '')), '><label for="', $config_var['name'], '">', $config_var['label'], '</label>', $subtext, '</span>
 						</dt>';
 				else
 					echo '
-							<a id="setting_', $config_var['name'], '"></a> <span', ($config_var['disabled'] ? ' class="disabled"' : ($config_var['invalid'] ? ' class="error"' : '')), '><label for="', $config_var['name'], '">', $config_var['label'], '</label>', $subtext, ($config_var['type'] == 'password' ? '<br /><em>' . $txt['admin_confirm_password'] . '</em>' : ''), '</span>
+							<a id="setting_', $config_var['name'], '"></a> <span', ($config_var['disabled'] ? ' class="disabled"' : ($config_var['invalid'] ? ' class="error"' : '')), '><label for="', $config_var['name'], '">', $config_var['label'], '</label>', $subtext, '</span>
 						</dt>';
 
 				echo '
@@ -985,8 +980,13 @@ function template_show_settings()
 				// Escape (via htmlspecialchars.) the text box.
 				elseif ($config_var['type'] == 'password')
 					echo '
-							<input type="password"', $disabled, $javascript, ' name="', $config_var['name'], '[0]"', ($config_var['size'] ? ' size="' . $config_var['size'] . '"' : ''), ' value="*#fakepass#*" onfocus="this.value = \'\'; this.form.', $config_var['name'], '.disabled = false;" class="input_password" /><br />
-							<input type="password" disabled="disabled" id="', $config_var['name'], '" name="', $config_var['name'], '[1]"', ($config_var['size'] ? ' size="' . $config_var['size'] . '"' : ''), ' class="input_password" />';
+							<input type="password"', $disabled, $javascript, ' name="', $config_var['name'], '[0]" id="', $config_var['name'], '"', ($config_var['size'] ? ' size="' . $config_var['size'] . '"' : ''), ' value="*#fakepass#*" onfocus="this.value = \'\'; this.form.', $config_var['name'], '_confirm.disabled = false;" class="input_password" />
+						</dd>
+						<dt>
+							<a id="setting_', $config_var['name'], '_confirm"></a><span', ($config_var['disabled'] ? ' class="disabled"' : ($config_var['invalid'] ? ' class="error"' : '')), '><label for="', $config_var['name'], '_confirm"><em>', $txt['admin_confirm_password'], '</em></label></span>
+						</dt>
+						<dd>
+							<input type="password" disabled="disabled" id="', $config_var['name'], '_confirm" name="', $config_var['name'], '[1]"', ($config_var['size'] ? ' size="' . $config_var['size'] . '"' : ''), ' class="input_password" />';
 				// Show a selection box.
 				elseif ($config_var['type'] == 'select')
 				{
@@ -1041,9 +1041,9 @@ function template_show_settings()
 				echo ($config_var['invalid']) ? '
 							<img class="icon" src="' . $settings['images_url'] . '/icons/field_invalid.png" />' : '';
 
-				echo isset($config_var['postinput']) ? '
-							' . $config_var['postinput'] : '',
-				'</dd>';
+				echo isset($config_var['postinput']) && $config_var['postinput'] !== '' ? '
+							' . $config_var['postinput'] : '', '
+						</dd>';
 			}
 		}
 		else
@@ -1093,12 +1093,7 @@ function template_show_settings()
 		</form>
 	</div>';
 
-	if (!empty($context['settings_post_javascript']))
-		echo '
-	<script><!-- // --><![CDATA[
-	', $context['settings_post_javascript'], '
-	// ]]></script>';
-
+	// @todo this should be replaced by layers
 	if (!empty($context['settings_insert_below']))
 		echo $context['settings_insert_below'];
 }
@@ -1116,7 +1111,7 @@ function template_admin_search_results()
 						<form id="quick_search" class="floatright" action="', $scripturl, '?action=admin;area=search" method="post" accept-charset="UTF-8">
 							<img class="icon" src="', $settings['images_url'], '/filter.png" alt="" />
 							<input type="text" name="search_term" value="', $context['search_term'], '" class="input_text" />
-							<input type="hidden" name="search_type" value="', $context['search_type'], '" />
+							<input type="hidden" name="sa" value="', $context['search_type'], '" />
 							<input type="submit" name="search_go" value="', $txt['admin_search_results_again'], '" class="button_submit" />
 						</form>
 					</div>
@@ -1350,11 +1345,7 @@ function template_repair_boards()
 	{
 		echo '
 	<script><!-- // --><![CDATA[
-		var countdown = 5,
-			txt_message = "', $txt['errors_recount_now'], '",
-			formName = "recount_form";
-
-		doAutoSubmit();
+		doAutoSubmit(5, ', JavaScriptEscape($txt['errors_recount_now']), ', "recount_form");
 	// ]]></script>';
 	}
 }
@@ -1374,7 +1365,7 @@ function template_php_info()
 	foreach ($context['pinfo'] as $area => $php_area)
 	{
 		echo '
-		<table id="', str_replace(' ', '_', $area), '" class="table_grid">
+		<table id="', str_replace(' ', '_', $area), '" class="table_grid wordbreak">
 			<thead>
 			<tr class="table_head three_column">
 				<th scope="col"></th>
@@ -1471,7 +1462,7 @@ function template_admin_quick_search()
 			<form action="', $scripturl, '?action=admin;area=search" method="post" accept-charset="UTF-8" id="quick_search" class="floatright">
 				<img class="icon" src="', $settings['images_url'], '/filter.png" alt="" />
 				<input type="text" name="search_term" placeholder="', $txt['admin_search'], '" class="input_text" />
-				<select name="search_type">
+				<select name="sa">
 					<option value="internal"', (empty($context['admin_preferences']['sb']) || $context['admin_preferences']['sb'] == 'internal' ? ' selected="selected"' : ''), '>', $txt['admin_search_type_internal'], '</option>
 					<option value="member"', (!empty($context['admin_preferences']['sb']) && $context['admin_preferences']['sb'] == 'member' ? ' selected="selected"' : ''), '>', $txt['admin_search_type_member'], '</option>
 					<option value="online"', (!empty($context['admin_preferences']['sb']) && $context['admin_preferences']['sb'] == 'online' ? ' selected="selected"' : ''), '>', $txt['admin_search_type_online'], '</option>

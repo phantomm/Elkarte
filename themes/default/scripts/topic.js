@@ -9,7 +9,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  * This file contains javascript associated with the topic viewing including
  * Quick Modify, Quick Reply, In Topic Moderation, thumbnail expansion etc
@@ -274,11 +274,11 @@ QuickReply.prototype.quote = function (iMessageId, xDeprecated)
 {
 	ajax_indicator(true);
 
-	// Collapsed on a quote, expand it but don't update the user setting
+	// Collapsed on a quote, then simply got to the full post screen
 	if (this.bCollapsed)
 	{
-		this.bCollapsed = !this.bCollapsed;
-		this.swap(false, false);
+		window.location.href = elk_prepareScriptUrl(this.opt.sScriptUrl) + 'action=post;quote=' + iMessageId + ';topic=' + this.opt.iTopicId + '.' + this.opt.iStart;
+		return false;
 	}
 
 	// Insert the quote
@@ -919,7 +919,7 @@ function ignore_toggles(msgids, text)
 function sendtopicOverlayDiv(desktopURL, sHeader, sIcon)
 {
 	// Set up our div details
-	var sAjax_indicator = '<div class="centertext"><i class="fa fa-spinner fa-spin" alt="loading"></i></div>',
+	var sAjax_indicator = '<div class="centertext"><i class="fa fa-spinner fa-spin"></i></div>',
 		oPopup_body;
 
 	sIcon = elk_images_url + '/' + (typeof(sIcon) === 'string' ? sIcon : 'helptopics.png');

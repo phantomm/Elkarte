@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -952,7 +952,7 @@ function updateBanMembers()
 	// We welcome our new members in the realm of the banned.
 	if (!empty($newMembers))
 	{
-		require_once(SUBSDIR . '/Auth.subs.php');
+		require_once(SUBSDIR . '/Logging.subs.php');
 		logOnline($newMembers, false);
 	}
 
@@ -1533,7 +1533,7 @@ function banDetails($ban_ids, $ban_group = false)
 			mem.member_name, mem.real_name
 		FROM {db_prefix}ban_items AS bi
 			LEFT JOIN {db_prefix}members AS mem ON (mem.id_member = bi.id_member)
-		WHERE bi.id_ban = {array_int:ban_items}' . ($ban_group !== false ? '
+		WHERE bi.id_ban IN ({array_int:ban_items})' . ($ban_group !== false ? '
 			AND bi.id_ban_group = {int:ban_group}' : ''),
 		array(
 			'ban_items' => $ban_ids,

@@ -17,7 +17,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -861,7 +861,7 @@ function sendpm($recipients, $subject, $message, $store_outbox = true, $from = n
 	);
 
 	// Select the right template
-	$email_template = ($maillist ? 'pbe_' : '') . 'new_pm' . (empty($modSettings['disallow_sendBody']) ? '_body' : '') . (!empty($to_names) ? '_tolist' : '');
+	$email_template = ($maillist && empty($modSettings['disallow_sendBody']) ? 'pbe_' : '') . 'new_pm' . (empty($modSettings['disallow_sendBody']) ? '_body' : '') . (!empty($to_names) ? '_tolist' : '');
 
 	foreach ($notifications as $lang => $notification_list)
 	{
@@ -869,7 +869,7 @@ function sendpm($recipients, $subject, $message, $store_outbox = true, $from = n
 		if ($maillist)
 		{
 			$sender_details = query_sender_wrapper($from['id']);
-			$from_wrapper = !empty($modSettings['maillist_sitename_address']) ? $modSettings['maillist_sitename_address'] : (empty($modSettings['maillist_mail_from']) ? $webmaster_email : $modSettings['maillist_mail_from']);
+			$from_wrapper = !empty($modSettings['maillist_mail_from']) ? $modSettings['maillist_mail_from'] : (empty($modSettings['maillist_sitename_address']) ? $webmaster_email : $modSettings['maillist_sitename_address']);
 
 			// Add in the signature
 			$replacements['SIGNATURE'] = $sender_details['signature'];
@@ -1400,7 +1400,7 @@ function getPmsFromDiscussion($pm_heads)
 		FROM {db_prefix}personal_messages
 		WHERE id_pm_head IN ({array_int:pm_heads})',
 		array(
-			'pm_heads' => array_keys($pm_heads),
+			'pm_heads' => $pm_heads,
 		)
 	);
 	// Copy the action from the single to PM to the others.

@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
@@ -579,9 +579,9 @@ function registerMember(&$regOptions, $error_context = 'register')
 		'passwd' => validateLoginPassword($regOptions['password'], '', $regOptions['username'], true),
 		'password_salt' => substr(md5(mt_rand()), 0, 4) ,
 		'posts' => 0,
-		'date_registered' => time(),
-		'member_ip' => $regOptions['ip'],
-		'member_ip2' => $regOptions['ip2'],
+		'date_registered' => !empty($regOptions['time']) ? $regOptions['time'] : time(),
+		'member_ip' => $regOptions['interface'] == 'admin' ? '127.0.0.1' : $regOptions['ip'],
+		'member_ip2' => $regOptions['interface'] == 'admin' ? '127.0.0.1' : $regOptions['ip2'],
 		'validation_code' => $validation_code,
 		'real_name' => $regOptions['username'],
 		'personal_text' => $modSettings['default_personal_text'],
@@ -825,7 +825,7 @@ function isReservedName($name, $current_ID_MEMBER = 0, $is_name = true, $fatal =
 	$checkName = Util::strtolower($name);
 
 	// Administrators are never restricted ;).
-	if (!allowedTo('moderate_forum') && ((!empty($modSettings['reserveName']) && $is_name) || !empty($modSettings['reserveUser']) && !$is_name))
+	if (!allowedTo('admin_forum') && ((!empty($modSettings['reserveName']) && $is_name) || !empty($modSettings['reserveUser']) && !$is_name))
 	{
 		$reservedNames = explode("\n", $modSettings['reserveNames']);
 		// Case sensitive check?
@@ -1232,19 +1232,11 @@ function populateDuplicateMembers(&$members)
 		return false;
 
 	// Fetch all members with this IP address, we'll filter out the current ones in a sec.
-	$request = $db->query('', '
-		SELECT
-			id_member, member_name, email_address, member_ip, member_ip2, is_activated
-		FROM {db_prefix}members
-		WHERE member_ip IN ({array_string:ips})
-			OR member_ip2 IN ({array_string:ips})',
-		array(
-			'ips' => $ips,
-		)
-	);
+	$members = membersByIP($ips, 'exact', true);
+
 	$duplicate_members = array();
 	$duplicate_ids = array();
-	while ($row = $db->fetch_assoc($request))
+	foreach ($members as $row)
 	{
 		//$duplicate_ids[] = $row['id_member'];
 
@@ -1262,7 +1254,6 @@ function populateDuplicateMembers(&$members)
 		if ($row['member_ip'] != $row['member_ip2'] && in_array($row['member_ip2'], $ips))
 			$duplicate_members[$row['member_ip2']][] = $member_context;
 	}
-	$db->free_result($request);
 
 	// Also try to get a list of messages using these ips.
 	$request = $db->query('', '
@@ -1320,6 +1311,71 @@ function populateDuplicateMembers(&$members)
 				$member_track[] = $duplicate_member['id'];
 			}
 		}
+}
+
+/**
+ * Find members with a given IP (first, second, exact or "relaxed")
+ *
+ * @package Members
+ * @param string|string[] $ip1 An IP or an array of IPs
+ * @param string $match (optional, default 'exact') if the match should be exact
+ *                of "relaxed" (using LIKE)
+ * @param bool $ip2 (optional, default false) If the query should check IP2 as well
+ */
+function membersByIP($ip1, $match = 'exact', $ip2 = false)
+{
+	$db = database();
+
+	$ip_params = array('ips' => array());
+	$ip_query = array();
+	foreach (array($ip1, $ip2) as $id => $ip)
+	{
+		if ($ip === false)
+			continue;
+
+		if ($match === 'exact')
+			$ip_params['ips'] = array_merge($ip_params['ips'], (array) $ip);
+		else
+		{
+			$ip = (array) $ip;
+			foreach ($ip as $id_var => $ip_var)
+			{
+				$ip_var = str_replace('*', '%', $ip_var);
+				$ip_query[] = strpos($ip_var, '%') === false ? '= {string:ip_address_' . $id . '_' . $id_var . '}' : 'LIKE {string:ip_address_' . $id . '_' . $id_var . '}';
+				$ip_params['ip_address_' . $id . '_' . $id_var] = $ip_var;
+			}
+		}
+	}
+
+	if ($match === 'exact')
+	{
+		$where = 'member_ip IN ({array_string:ips})';
+		if ($ip2 !== false)
+			$where .= '
+			OR member_ip2 IN ({array_string:ips})';
+	}
+	else
+	{
+		$where = 'member_ip ' . implode(' OR member_ip', $ip_query);
+		if ($ip2 !== false)
+			$where .= '
+			OR member_ip2 ' . implode(' OR member_ip', $ip_query);
+	}
+
+	$request = $db->query('', '
+		SELECT
+			id_member, member_name, email_address, member_ip, member_ip2, is_activated
+		FROM {db_prefix}members
+		WHERE ' . $where,
+		$ip_params
+	);
+
+	$return = array();
+	while ($row = $db->fetch_assoc($request))
+		$return[] = $row;
+	$db->free_result($request);
+
+	return $return;
 }
 
 /**
@@ -1681,11 +1737,13 @@ function getMemberByName($name, $flexible = false)
 	$request = $db->query('', '
 		SELECT id_member, id_group
 		FROM {db_prefix}members
-		WHERE real_name = {string:name}' . ($flexible ? '
-			OR member_name = {string:name}' : '') . '
+		WHERE {raw:real_name} LIKE {string:name}' . ($flexible ? '
+			OR {raw:member_name} LIKE {string:name}' : '') . '
 		LIMIT 1',
 		array(
-			'name' => $name,
+			'name' => Util::strtolower($name),
+			'real_name' => defined('DB_CASE_SENSITIVE') ? 'LOWER(real_name)' : 'real_name',
+			'member_name' => defined('DB_CASE_SENSITIVE') ? 'LOWER(member_name)' : 'member_name',
 		)
 	);
 	if ($db->num_rows($request) == 0)
@@ -1715,12 +1773,14 @@ function getMember($search, $buddies = array())
 		FROM {db_prefix}members
 		WHERE {raw:real_name} LIKE {string:search}' . (!empty($buddies) ? '
 			AND id_member IN ({array_int:buddy_list})' : '') . '
-			AND is_activated IN (1, 12)
-		LIMIT ' . (Util::strlen($search) <= 2 ? '100' : '800'),
+			AND is_activated IN ({array_int:activation_status})
+		LIMIT {int:limit}',
 		array(
 			'real_name' => defined('DB_CASE_SENSITIVE') ? 'LOWER(real_name)' : 'real_name',
 			'buddy_list' => $buddies,
-			'search' => $search,
+			'search' => Util::strtolower($search),
+			'activation_status' => array(1, 12),
+			'limit' => Util::strlen($search) <= 2 ? 100 : 800,
 		)
 	);
 	$xml_data = array(
@@ -2353,7 +2413,7 @@ function updateMemberData($members, $data)
 		'date_registered', 'posts', 'id_group', 'last_login', 'personal_messages', 'unread_messages', 'mentions',
 		'new_pm', 'pm_prefs', 'gender', 'hide_email', 'show_online', 'pm_email_notify', 'receive_from', 'karma_good', 'karma_bad',
 		'notify_announcements', 'notify_send_body', 'notify_regularity', 'notify_types',
-		'id_theme', 'is_activated', 'id_msg_last_visit', 'id_post_group', 'total_time_logged_in', 'warning', 'likes_given', 'likes_received',
+		'id_theme', 'is_activated', 'id_msg_last_visit', 'id_post_group', 'total_time_logged_in', 'warning', 'likes_given', 'likes_received','enable_otp'
 	);
 	$knownFloats = array(
 		'time_offset',
@@ -2468,4 +2528,35 @@ function updateMemberData($members, $data)
 			cache_put_data('user_settings-' . $member, null, 60);
 		}
 	}
+}
+
+/**
+ * Loads members who are associated with an ip address
+ *
+ * @param string $ip_string raw value to use in where clause
+ * @param string $ip_var
+ */
+function loadMembersIPs($ip_string, $ip_var)
+{
+	global $scripturl;
+
+	$db = database();
+
+	$request = $db->query('', '
+		SELECT
+			id_member, real_name AS display_name, member_ip
+		FROM {db_prefix}members
+		WHERE member_ip ' . $ip_string,
+		array(
+			'ip_address' => $ip_var,
+		)
+	);
+	$ips = array();
+	while ($row = $db->fetch_assoc($request))
+		$ips[$row['member_ip']][] = '<a href="' . $scripturl . '?action=profile;u=' . $row['id_member'] . '">' . $row['display_name'] . '</a>';
+	$db->free_result($request);
+
+	ksort($ips);
+
+	return $ips;
 }

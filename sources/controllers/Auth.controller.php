@@ -14,7 +14,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -210,6 +210,26 @@ class Auth_Controller extends Action_Controller
 		// Find them... if we can
 		$user_settings = loadExistingMember($_POST['user']);
 
+		//User using 2FA for login? Let's validate the token...
+		if (!empty($user_settings['enable_otp']) && empty($_POST['otp_token']))
+		{
+			$context['login_errors'] = array($txt['otp_required']);
+			return;
+		}
+		if (!empty($_POST['otp_token']))
+		{
+			require_once(EXTDIR . '/GoogleAuthenticator.php');
+			$ga = New GoogleAuthenticator();
+			$oneCode = $ga->GetCode($user_settings['otp_secret'], $_POST['otp_timestamp']);
+			$checkResult =$ga->verifyCode($user_settings['otp_secret'], $_POST['otp_token'], 2);
+
+			if(!$checkResult)
+			{
+				$context['login_errors'] = array($txt['invalid_otptoken']);
+				return;
+			}
+			
+		}
 		// Let them try again, it didn't match anything...
 		if (empty($user_settings))
 		{
@@ -372,6 +392,7 @@ class Auth_Controller extends Action_Controller
 			call_integration_hook('integrate_logout', array($user_settings['member_name']));
 
 			// If you log out, you aren't online anymore :P.
+			require_once(SUBSDIR . '/Logging.subs.php');
 			logOnline($user_info['id'], false);
 		}
 
@@ -750,6 +771,7 @@ function doLogin()
 	updateMemberData($user_info['id'], array('last_login' => time(), 'member_ip' => $user_info['ip'], 'member_ip2' => $req->ban_ip()));
 
 	// Get rid of the online entry for that old guest....
+	require_once(SUBSDIR . '/Logging.subs.php');
 	deleteOnline('ip' . $user_info['ip']);
 	$_SESSION['log_time'] = 0;
 

@@ -11,7 +11,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -315,7 +315,7 @@ function template_generic_menu_tabs(&$menu_context)
 					</p>';
 
 	// Print out all the items in this tab (if any).
-	if (!empty($context['tabs']))
+	if (!empty($tab_context['tabs']))
 	{
 		// The admin tabs.
 		echo '

@@ -16,7 +16,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -347,8 +347,6 @@ function loadForumTests()
 				GROUP BY t.id_topic, t.id_first_msg, t.id_last_msg, t.approved, mf.approved
 				ORDER BY t.id_topic',
 			'fix_processing' => function ($row) {
-				$db = database();
-
 				$row['firstmsg_approved'] = (int) $row['firstmsg_approved'];
 				$row['myid_first_msg'] = (int) $row['myid_first_msg'];
 				$row['myid_last_msg'] = (int) $row['myid_last_msg'];
@@ -360,21 +358,13 @@ function loadForumTests()
 				$memberStartedID = getMsgMemberID($row['myid_first_msg']);
 				$memberUpdatedID = getMsgMemberID($row['myid_last_msg']);
 
-				$db->query('', '
-					UPDATE {db_prefix}topics
-					SET id_first_msg = {int:myid_first_msg},
-						id_member_started = {int:memberStartedID}, id_last_msg = {int:myid_last_msg},
-						id_member_updated = {int:memberUpdatedID}, approved = {int:firstmsg_approved}
-					WHERE id_topic = {int:topic_id}',
-					array(
-						'myid_first_msg' => $row['myid_first_msg'],
-						'memberStartedID' => $memberStartedID,
-						'myid_last_msg' => $row['myid_last_msg'],
-						'memberUpdatedID' => $memberUpdatedID,
-						'firstmsg_approved' => $row['firstmsg_approved'],
-						'topic_id' => $row['id_topic'],
-					)
-				);
+				setTopicAttribute($row['id_topic'], array(
+					'id_first_msg' => $row['myid_first_msg'],
+					'id_member_started' => $memberStartedID,
+					'id_last_msg' => $row['myid_last_msg'],
+					'id_member_updated' => $memberUpdatedID,
+					'approved' => $row['firstmsg_approved'],
+				));
 			},
 			'message_function' => function ($row) {
 				global $txt, $context;
@@ -412,23 +402,15 @@ function loadForumTests()
 				GROUP BY t.id_topic, t.num_replies, mf.approved
 				ORDER BY t.id_topic',
 			'fix_processing' => function ($row) {
-				$db = database();
-
 				$row['my_num_replies'] = (int) $row['my_num_replies'];
 
 				// Not really a problem?
 				if ($row['my_num_replies'] == $row['num_replies'])
 					return false;
 
-				$db->query('', '
-					UPDATE {db_prefix}topics
-					SET num_replies = {int:my_num_replies}
-					WHERE id_topic = {int:topic_id}',
-					array(
-						'my_num_replies' => $row['my_num_replies'],
-						'topic_id' => $row['id_topic'],
-					)
-				);
+				setTopicAttribute($row['id_topic'], array(
+					'num_replies' => $row['my_num_replies'],
+				));
 			},
 			'message_function' => function ($row) {
 				global $txt, $context;
@@ -461,19 +443,11 @@ function loadForumTests()
 				HAVING unapproved_posts != COUNT(mu.id_msg)
 				ORDER BY t.id_topic',
 			'fix_processing' => function ($row) {
-				$db = database();
-
 				$row['my_unapproved_posts'] = (int) $row['my_unapproved_posts'];
 
-				$db->query('', '
-					UPDATE {db_prefix}topics
-					SET unapproved_posts = {int:my_unapproved_posts}
-					WHERE id_topic = {int:topic_id}',
-					array(
-						'my_unapproved_posts' => $row['my_unapproved_posts'],
-						'topic_id' => $row['id_topic'],
-					)
-				);
+				setTopicAttribute($row['id_topic'], array(
+					'unapproved_posts' => $row['my_unapproved_posts'],
+				));
 			},
 			'messages' => array('repair_stats_topics_4', 'id_topic', 'unapproved_posts'),
 		),
@@ -1370,7 +1344,7 @@ function createSalvageArea()
  */
 function pauseRepairProcess($to_fix, $current_step_description, $max_substep = 0, $force = false)
 {
-	global $context, $txt, $time_start, $db_temp_cache, $db_cache;
+	global $context, $txt, $time_start, $db_temp_cache, $db_show_debug;
 
 	// More time, I need more time!
 	@set_time_limit(600);
@@ -1382,8 +1356,8 @@ function pauseRepairProcess($to_fix, $current_step_description, $max_substep = 0
 		return;
 
 	// Restore the query cache if interested.
-	if (!empty($db_temp_cache))
-		$db_cache = $db_temp_cache;
+	if ($db_show_debug === true)
+		Debug::get()->on();
 
 	$context['continue_get_data'] = '?action=admin;area=repairboards' . (isset($_GET['fixErrors']) ? ';fixErrors' : '') . ';step=' . $_GET['step'] . ';substep=' . $_GET['substep'] . ';' . $context['session_var'] . '=' . $context['session_id'];
 	$context['page_title'] = $txt['not_done_title'];
@@ -1423,7 +1397,7 @@ function pauseRepairProcess($to_fix, $current_step_description, $max_substep = 0
  */
 function findForumErrors($do_fix = false)
 {
-	global $context, $txt, $errorTests, $db_cache, $db_temp_cache;
+	global $context, $txt, $errorTests, $db_show_debug, $db_temp_cache;
 
 	$db = database();
 
@@ -1437,8 +1411,8 @@ function findForumErrors($do_fix = false)
 	$_GET['substep'] = empty($_GET['substep']) ? 0 : (int) $_GET['substep'];
 
 	// Don't allow the cache to get too full.
-	$db_temp_cache = $db_cache;
-	$db_cache = '';
+	if ($db_show_debug === true)
+		Debug::get()->off();
 
 	$context['total_steps'] = count($errorTests);
 
@@ -1594,8 +1568,6 @@ function findForumErrors($do_fix = false)
 
 			// Free the result.
 			$db->free_result($request);
-			// Keep memory down.
-			$db_cache = '';
 
 			// Are we done yet?
 			if (isset($test['substeps']))
@@ -1634,9 +1606,6 @@ function findForumErrors($do_fix = false)
 		// Are we done?
 		pauseRepairProcess($to_fix, $error_type);
 	}
-
-	// Restore the cache.
-	$db_cache = $db_temp_cache;
 
 	return $to_fix;
 }

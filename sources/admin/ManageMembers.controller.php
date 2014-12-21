@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -534,6 +534,7 @@ class ManageMembers_Controller extends Action_Controller
 							global $txt;
 
 							require_once(SUBSDIR . '/Members.subs.php');
+
 							// Calculate number of days since last online.
 							if (empty($rowData['last_login']))
 								$difference = $txt['never'];
@@ -871,6 +872,8 @@ class ManageMembers_Controller extends Action_Controller
 					),
 					'data' => array(
 						'function' => function ($rowData) {
+							global $context;
+
 							return standardTime($rowData['' . ($context['current_filter'] == 4 ? 'last_login' : 'date_registered') . '']);
 						},
 					),

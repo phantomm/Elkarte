@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
@@ -26,7 +26,7 @@ if (!defined('ELK'))
  * @param boolean $fatal if the function ends in a fatal error in case of problems (default true)
  * @param boolean $reload_id if true the already set value is ignored (default false)
  *
- * @return mixed and integer if no error, false in case of problems if $fatal is false
+ * @return integer if no error.  May return false in case of problems only if $fatal is set to false
  */
 function currentMemberID($fatal = true, $reload_id = false)
 {
@@ -88,7 +88,6 @@ function setupProfileContext($fields, $hook = '')
 	// Some default bits.
 	$context['profile_prehtml'] = '';
 	$context['profile_posthtml'] = '';
-	$context['profile_javascript'] = '';
 	$context['profile_onsubmit_javascript'] = '';
 
 	$i = 0;
@@ -126,9 +125,9 @@ function setupProfileContext($fields, $hook = '')
 			if (!empty($cur_field['js_submit']))
 				$context['profile_onsubmit_javascript'] .= $cur_field['js_submit'];
 			if (!empty($cur_field['js']))
-				$context['profile_javascript'] .= $cur_field['js'];
+				addInlineJavascript($cur_field['js']);
 			if (!empty($cur_field['js_load']))
-				loadJavascriptFile ($cur_field['js_load']);
+				loadJavascriptFile($cur_field['js_load']);
 
 			// Any template stuff?
 			if (!empty($cur_field['prehtml']))
@@ -687,6 +686,23 @@ function loadProfileFields($force_reload = false)
 			'value' => '',
 			'permission' => 'profile_identity',
 			'is_dummy' => true,
+		),
+		'enable_otp' => array(
+			'type' => 'check',
+			'value' => empty($cur_profile['enable_otp']) ? false : true,
+			'subtext' => $txt['otp_enabled_help'],
+			'label' => $txt['otp_enabled'],
+			'permission' => 'profile_identity',
+		),
+		'otp_secret' => array(
+			'type' => 'text',
+			'label' => ucwords($txt['otp_token']),
+			'subtext' => $txt['otp_token_help'],
+			'enabled' => empty($cur_profile['openid_uri']),
+			'size' => 20,
+			'value' => empty($cur_profile['otp_secret']) ? '' : $cur_profile['otp_secret'],
+			'postinput' => '<span class="smalltext" style="margin-left: 4ex;"><input type="button" value="' . $txt['otp_generate'] . '" onclick="generateSecret();"><div id="qrcode"></div>',
+			'permission' => 'profile_identity',
 		),
 		'personal_text' => array(
 			'type' => 'text',
@@ -1569,7 +1585,7 @@ function isCustomFieldValid($field, $value)
 	if ($field['type'] == 'text' && !empty($field['mask']) && $field['mask'] != 'none')
 	{
 		// @todo We never error on this - just ignore it at the moment...
-		if ($field['mask'] == 'email' && (preg_match('~^[0-9A-Za-z=_+\-/][0-9A-Za-z=_\'+\-/\.]*@[\w\-]+(\.[\w\-]+)*(\.[\w]{2,6})$~', $value) === 0 || strlen($value) > 255))
+		if ($field['mask'] == 'email' && !isValidEmail($value))
 			return 'custom_field_invalid_email';
 		elseif ($field['mask'] == 'number' && preg_match('~[^\d]~', $value))
 			return 'custom_field_not_number';
@@ -1604,7 +1620,7 @@ function profileSendActivation()
 	sendmail($profile_vars['email_address'], $emaildata['subject'], $emaildata['body'], null, null, false, 0);
 
 	// Log the user out.
-	require_once(SUBSDIR . '/Auth.subs.php');
+	require_once(SUBSDIR . '/Logging.subs.php');
 	logOnline($context['id_member'], false);
 	$_SESSION['log_time'] = 0;
 	$_SESSION['login_' . $cookiename] = serialize(array(0, '', 0));
@@ -1706,16 +1722,22 @@ function profileLoadAvatarData()
 
 	$valid_protocol = substr($cur_profile['avatar'], 0, 7) === 'http://' || substr($cur_profile['avatar'], 0, 8) === 'https://';
 
+	// @todo Temporary
+	if ($context['user']['is_owner'])
+		$allowedChange = allowedTo('profile_set_avatar') && allowedTo(array('profile_extra_any', 'profile_extra_own'));
+	else
+		$allowedChange = allowedTo('profile_set_avatar') && allowedTo('profile_extra_any');
+
 	// Default context.
 	$context['member']['avatar'] += array(
 		'custom' => $valid_protocol ? $cur_profile['avatar'] : 'http://',
 		'selection' => $valid_protocol ? $cur_profile['avatar'] : '' ,
 		'id_attach' => $cur_profile['id_attach'],
 		'filename' => $cur_profile['filename'],
-		'allow_server_stored' => allowedTo('profile_server_avatar') || (!$context['user']['is_owner'] && allowedTo('profile_extra_any')),
-		'allow_upload' => allowedTo('profile_upload_avatar') || (!$context['user']['is_owner'] && allowedTo('profile_extra_any')),
-		'allow_external' => allowedTo('profile_remote_avatar') || (!$context['user']['is_owner'] && allowedTo('profile_extra_any')),
-		'allow_gravatar' => allowedTo('profile_gravatar') || (!$context['user']['is_owner'] && allowedTo('profile_extra_any')),
+		'allow_server_stored' => !empty($modSettings['avatar_stored_enabled']) && $allowedChange,
+		'allow_upload' =>  !empty($modSettings['avatar_upload_enabled']) && $allowedChange,
+		'allow_external' =>  !empty($modSettings['avatar_external_enabled']) && $allowedChange,
+		'allow_gravatar' =>  !empty($modSettings['avatar_gravatar_enabled']) && $allowedChange,
 	);
 
 	if ($cur_profile['avatar'] == '' && $cur_profile['id_attach'] > 0 && $context['member']['avatar']['allow_upload'])
@@ -2084,9 +2106,9 @@ function profileSaveAvatarData(&$value)
 	$id_folder = getAvatarPathID();
 
 	$downloadedExternalAvatar = false;
-	$valid_http = substr($_POST['userpicpersonal'], 0, 7) === 'http://' && strlen($_POST['userpicpersonal']) > 7;
-	$valid_https = substr($_POST['userpicpersonal'], 0, 8) === 'https://' && strlen($_POST['userpicpersonal']) > 8;
-	if ($value == 'external' && allowedTo('profile_remote_avatar') && ($valid_http || $valid_https) && !empty($modSettings['avatar_download_external']))
+	$valid_http = isset($_POST['userpicpersonal']) && substr($_POST['userpicpersonal'], 0, 7) === 'http://' && strlen($_POST['userpicpersonal']) > 7;
+	$valid_https = isset($_POST['userpicpersonal']) && substr($_POST['userpicpersonal'], 0, 8) === 'https://' && strlen($_POST['userpicpersonal']) > 8;
+	if ($value == 'external' && !empty($modSettings['avatar_external_enabled']) && ($valid_http || $valid_https) && !empty($modSettings['avatar_download_external']))
 	{
 		loadLanguage('Post');
 		if (!is_writable($uploadDir))
@@ -2120,7 +2142,7 @@ function profileSaveAvatarData(&$value)
 
 		removeAttachments(array('id_member' => $memID));
 	}
-	elseif ($value == 'server_stored' && allowedTo('profile_server_avatar'))
+	elseif ($value == 'server_stored' && !empty($modSettings['avatar_stored_enabled']))
 	{
 		$profile_vars['avatar'] = strtr(empty($_POST['file']) ? (empty($_POST['cat']) ? '' : $_POST['cat']) : $_POST['file'], array('&amp;' => '&'));
 		$profile_vars['avatar'] = preg_match('~^([\w _!@%*=\-#()\[\]&.,]+/)?[\w _!@%*=\-#()\[\]&.,]+$~', $profile_vars['avatar']) != 0 && preg_match('/\.\./', $profile_vars['avatar']) == 0 && file_exists($modSettings['avatar_directory'] . '/' . $profile_vars['avatar']) ? ($profile_vars['avatar'] == 'blank.png' ? '' : $profile_vars['avatar']) : '';
@@ -2133,7 +2155,7 @@ function profileSaveAvatarData(&$value)
 		// Get rid of their old avatar. (if uploaded.)
 		removeAttachments(array('id_member' => $memID));
 	}
-	elseif ($value == 'gravatar' && allowedTo('profile_gravatar'))
+	elseif ($value == 'gravatar' && !empty($modSettings['avatar_gravatar_enabled']))
 	{
 		$profile_vars['avatar'] = 'gravatar';
 
@@ -2144,7 +2166,7 @@ function profileSaveAvatarData(&$value)
 
 		removeAttachments(array('id_member' => $memID));
 	}
-	elseif ($value == 'external' && allowedTo('profile_remote_avatar') && ($valid_http || $valid_https) && empty($modSettings['avatar_download_external']))
+	elseif ($value == 'external' && !empty($modSettings['avatar_external_enabled']) && ($valid_http || $valid_https) && empty($modSettings['avatar_download_external']))
 	{
 		// We need these clean...
 		$cur_profile['id_attach'] = 0;
@@ -2162,12 +2184,12 @@ function profileSaveAvatarData(&$value)
 		elseif (!$valid_http && !$valid_https)
 			return 'bad_avatar';
 		// Should we check dimensions?
-		elseif (!empty($modSettings['avatar_max_height_external']) || !empty($modSettings['avatar_max_width_external']))
+		elseif (!empty($modSettings['avatar_max_height']) || !empty($modSettings['avatar_max_width']))
 		{
 			// Now let's validate the avatar.
 			$sizes = url_image_size($profile_vars['avatar']);
 
-			if (is_array($sizes) && (($sizes[0] > $modSettings['avatar_max_width_external'] && !empty($modSettings['avatar_max_width_external'])) || ($sizes[1] > $modSettings['avatar_max_height_external'] && !empty($modSettings['avatar_max_height_external']))))
+			if (is_array($sizes) && (($sizes[0] > $modSettings['avatar_max_width'] && !empty($modSettings['avatar_max_width'])) || ($sizes[1] > $modSettings['avatar_max_height'] && !empty($modSettings['avatar_max_height']))))
 			{
 				// Houston, we have a problem. The avatar is too large!!
 				if ($modSettings['avatar_action_too_large'] == 'option_refuse')
@@ -2176,7 +2198,7 @@ function profileSaveAvatarData(&$value)
 				{
 					// @todo remove this if appropriate
 					require_once(SUBSDIR . '/Attachments.subs.php');
-					if (saveAvatar($profile_vars['avatar'], $memID, $modSettings['avatar_max_width_external'], $modSettings['avatar_max_height_external']))
+					if (saveAvatar($profile_vars['avatar'], $memID, $modSettings['avatar_max_width'], $modSettings['avatar_max_height']))
 					{
 						$profile_vars['avatar'] = '';
 						$cur_profile['id_attach'] = $modSettings['new_avatar_data']['id'];
@@ -2189,7 +2211,7 @@ function profileSaveAvatarData(&$value)
 			}
 		}
 	}
-	elseif (($value == 'upload' && allowedTo('profile_upload_avatar')) || $downloadedExternalAvatar)
+	elseif (($value == 'upload' && !empty($modSettings['avatar_upload_enabled'])) || $downloadedExternalAvatar)
 	{
 		if ((isset($_FILES['attachment']['name']) && $_FILES['attachment']['name'] != '') || $downloadedExternalAvatar)
 		{
@@ -2197,7 +2219,10 @@ function profileSaveAvatarData(&$value)
 			if (!$downloadedExternalAvatar)
 			{
 				if (!is_writable($uploadDir))
+				{
+					loadLanguage('Post');
 					fatal_lang_error('attachments_no_write', 'critical');
+				}
 
 				$new_avatar_name = $uploadDir . '/' . getAttachmentFilename('avatar_tmp_' . $memID, false, null, true);
 				if (!move_uploaded_file($_FILES['attachment']['tmp_name'], $new_avatar_name))
@@ -2214,20 +2239,46 @@ function profileSaveAvatarData(&$value)
 				return 'bad_avatar';
 			}
 			// Check whether the image is too large.
-			elseif ((!empty($modSettings['avatar_max_width_upload']) && $sizes[0] > $modSettings['avatar_max_width_upload']) || (!empty($modSettings['avatar_max_height_upload']) && $sizes[1] > $modSettings['avatar_max_height_upload']))
+			elseif ((!empty($modSettings['avatar_max_width']) && $sizes[0] > $modSettings['avatar_max_width']) || (!empty($modSettings['avatar_max_height']) && $sizes[1] > $modSettings['avatar_max_height']))
 			{
-				if (!empty($modSettings['avatar_resize_upload']))
+				if (!empty($modSettings['avatar_action_too_large']) && $modSettings['avatar_action_too_large'] == 'option_download_and_resize')
 				{
 					// Attempt to chmod it.
 					@chmod($_FILES['attachment']['tmp_name'], 0644);
 
 					// @todo remove this require when appropriate
 					require_once(SUBSDIR . '/Attachments.subs.php');
-					if (!saveAvatar($_FILES['attachment']['tmp_name'], $memID, $modSettings['avatar_max_width_upload'], $modSettings['avatar_max_height_upload']))
+					if (!saveAvatar($_FILES['attachment']['tmp_name'], $memID, $modSettings['avatar_max_width'], $modSettings['avatar_max_height']))
 					{
 						// Something went wrong, so lets delete this offender
 						@unlink($_FILES['attachment']['tmp_name']);
 						return 'bad_avatar';
+					}
+
+					// Reset attachment avatar data.
+					$cur_profile['id_attach'] = $modSettings['new_avatar_data']['id'];
+					$cur_profile['filename'] = $modSettings['new_avatar_data']['filename'];
+					$cur_profile['attachment_type'] = $modSettings['new_avatar_data']['type'];
+				}
+				elseif (!empty($modSettings['avatar_action_too_large']) && !empty($modSettings['avatar_reencode']))
+				{
+					// Attempt to chmod it.
+					@chmod($_FILES['attachment']['tmp_name'], 0644);
+
+					require_once(SUBSDIR . '/Graphics.subs.php');
+					if (!reencodeImage($_FILES['attachment']['tmp_name'], $sizes[2]))
+					{
+						@unlink($_FILES['attachment']['tmp_name']);
+						return 'bad_avatar';
+					}
+
+					// @todo remove this require when appropriate
+					require_once(SUBSDIR . '/Attachments.subs.php');
+					if (!saveAvatar($_FILES['attachment']['tmp_name'], $memID, $modSettings['avatar_max_width'], $modSettings['avatar_max_height']))
+					{
+						// Something went wrong, so lets delete this offender
+						@unlink($_FILES['attachment']['tmp_name']);
+						return 'bad_avatar5';
 					}
 
 					// Reset attachment avatar data.
@@ -2567,7 +2618,7 @@ function profileLoadAttachments($start, $items_per_page, $sort, $boardsAllowed, 
 			'height' => $row['height'],
 			'downloads' => $row['downloads'],
 			'is_image' => !empty($row['width']) && !empty($row['height']) && !empty($modSettings['attachmentShowImages']),
-			'id_thumb' => $row['id_thumb'],
+			'id_thumb' => !empty($row['id_thumb']) ? $row['id_thumb'] : '',
 			'subject' => '<a href="' . $scripturl . '?topic=' . $row['id_topic'] . '.msg' . $row['id_msg'] . '#msg' . $row['id_msg'] . '" rel="nofollow">' . censorText($row['subject']) . '</a>',
 			'posted' => $row['poster_time'],
 			'msg' => $row['id_msg'],

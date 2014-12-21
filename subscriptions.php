@@ -14,7 +14,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  * 
  */
 
@@ -25,7 +25,7 @@ if (!file_exists(dirname(__FILE__) . '/SSI.php'))
 
 // Need lots of help
 require_once(dirname(__FILE__) . '/SSI.php');
-require_once(ADMINDIR . '/ManagePaid.php');
+require_once(SUBSDIR . '/PaidSubscriptions.subs.php');
 require_once(SUBSDIR . '/Admin.subs.php');
 require_once(SUBSDIR . '/Members.subs.php');
 

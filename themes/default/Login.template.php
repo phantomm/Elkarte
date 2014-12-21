@@ -11,7 +11,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -50,7 +50,13 @@ function template_login()
 					<dt><label for="passwrd">', $txt['password'], '</label>:</dt>
 					<dd>
 						<input type="password" name="passwrd" id="passwrd" value="', $context['default_password'], '" size="20" class="input_password" placeholder="', $txt['password'], '" />
-					</dd>
+					</dd>';
+
+	if (!empty($modSettings['enableOTP']))
+		echo '
+					<dt>', $txt['otp_token'], '</dt>
+					<dd><input type="password" name="otp_token" id="otp_token" value="', $context['default_password'], '" size="8" class="input_password" placeholder="', $txt['otp_token'], '" /></dd>';
+	echo '
 				</dl>';
 
 	if (!empty($modSettings['enableOpenID']))

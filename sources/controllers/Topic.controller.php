@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
@@ -32,11 +32,19 @@ class Topic_Controller extends Action_Controller
 	 */
 	public function action_index()
 	{
+		global $topic;
+
 		// Call the right method, if it ain't done yet.
 		// this is done by the dispatcher, so lets leave it alone...
 		// we don't want to assume what it means if the user doesn't
 		// send us a ?sa=, do we? (lock topics out of nowhere?)
 		// Unless... we can printpage()
+
+		// Without anything it throws an error, so redirect somewhere
+		if (!empty($topic))
+			redirectexit('topic=' . $topic . '.0');
+		else
+			redirectexit();
 	}
 
 	/**
@@ -138,7 +146,7 @@ class Topic_Controller extends Action_Controller
 		$is_sticky = topicAttribute($topic, 'sticky');
 
 		// Toggle the sticky value.
-		setTopicAttribute($topic, array('sticky' => (empty($is_sticky) ? 1 : 0)));
+		setTopicAttribute($topic, array('is_sticky' => (empty($is_sticky) ? 1 : 0)));
 
 		// Log this sticky action - always a moderator thing.
 		logAction(empty($is_sticky) ? 'sticky' : 'unsticky', array('topic' => $topic, 'board' => $board));

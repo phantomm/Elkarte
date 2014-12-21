@@ -14,7 +14,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -158,13 +158,13 @@ class ManageRegistration_Controller extends Action_Controller
 				'password' => $password,
 				'password_check' => $password,
 				'check_reserved_name' => true,
-				'check_password_strength' => false,
+				'check_password_strength' => true,
 				'check_email_ban' => false,
 				'send_welcome_email' => isset($_POST['emailPassword']),
 				'require' => isset($_POST['emailActivate']) ? 'activation' : 'nothing',
 				'memberGroup' => empty($_POST['group']) || !allowedTo('manage_membergroups') ? 0 : (int) $_POST['group'],
-				'member_ip' => '127.0.0.1',
-				'member_ip2' => '127.0.0.1',
+				'ip' => '127.0.0.1',
+				'ip2' => '127.0.0.1',
 				'auth_method' => 'password',
 			);
 
@@ -210,6 +210,7 @@ class ManageRegistration_Controller extends Action_Controller
 			$context['member_groups'] = array();
 
 		// Basic stuff.
+		addInlineJavascript('disableAutoComplete();', true);
 		$context['sub_template'] = 'admin_register';
 		$context['page_title'] = $txt['registration_center'];
 		createToken('admin-regc');
@@ -263,12 +264,13 @@ class ManageRegistration_Controller extends Action_Controller
 			fwrite($fp, str_replace("\r", '', $_POST['agreement']));
 			fclose($fp);
 
-			updateSettings(array('requireAgreement' => !empty($_POST['requireAgreement'])));
+			updateSettings(array('requireAgreement' => !empty($_POST['requireAgreement']), 'checkboxAgreement' => !empty($_POST['checkboxAgreement'])));
 		}
 
 		$context['agreement'] = file_exists(BOARDDIR . '/agreement' . $context['current_agreement'] . '.txt') ? htmlspecialchars(file_get_contents(BOARDDIR . '/agreement' . $context['current_agreement'] . '.txt'), ENT_COMPAT, 'UTF-8') : '';
 		$context['warning'] = is_writable(BOARDDIR . '/agreement' . $context['current_agreement'] . '.txt') ? '' : $txt['agreement_not_writable'];
 		$context['require_agreement'] = !empty($modSettings['requireAgreement']);
+		$context['checkbox_agreement'] = !empty($modSettings['checkboxAgreement']);
 
 		$context['sub_template'] = 'edit_agreement';
 		$context['page_title'] = $txt['registration_agreement'];

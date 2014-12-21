@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -51,15 +51,17 @@ class Attachment_Controller extends Action_Controller
 
 	/**
 	 * Function to upload attachements via ajax calls
-	 * Currently called by drag drop attachment functionality
-	 * Pass the form data with session vars
-	 * responds back with errors or file data
+	 *
+	 * - Currently called by drag drop attachment functionality
+	 * - Pass the form data with session vars
+	 * - Responds back with errors or file data
 	 */
 	public function action_ulattach()
 	{
-		global $context, $modSettings;
+		global $context, $modSettings, $txt;
 
 		$resp_data = array();
+		loadLanguage('Errors');
 		$context['attachments']['can']['post'] = !empty($modSettings['attachmentEnable']) && $modSettings['attachmentEnable'] == 1 && (allowedTo('post_attachment') || ($modSettings['postmod_active'] && allowedTo('post_unapproved_attachments')));
 
 		// Set up the template details
@@ -71,7 +73,7 @@ class Attachment_Controller extends Action_Controller
 		// Make sure the session is still valid
 		if (checkSession('request', '', false) != '')
 		{
-			$context['json_data'] = array('result' => false, 'data' => 'session timeout');
+			$context['json_data'] = array('result' => false, 'data' => $txt['session_timeout_file_upload']);
 			return false;
 		}
 
@@ -125,7 +127,7 @@ class Attachment_Controller extends Action_Controller
 		}
 		// Could not find the files you claimed to have sent
 		else
-			$context['json_data'] = array('result' => false, 'data' => 'files not there');
+			$context['json_data'] = array('result' => false, 'data' => $txt['no_files_uploaded']);
 	}
 
 	/**

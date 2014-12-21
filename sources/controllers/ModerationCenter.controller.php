@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -243,12 +243,10 @@ class ModerationCenter_Controller extends Action_Controller
 		// I don't know where we're going - I don't know where we've been...
 		$menuOptions = array(
 			'action' => 'moderate',
+			'hook' => 'moderation',
 			'disable_url_session_check' => true,
 			'default_include_dir' => CONTROLLERDIR,
 		);
-
-		// Let them modify PM areas easily.
-		call_integration_hook('integrate_moderation_areas', array(&$moderation_areas, &$menuOptions));
 
 		$mod_include_data = createMenu($moderation_areas, $menuOptions);
 		unset($moderation_areas);
@@ -842,7 +840,7 @@ class ModerationCenter_Controller extends Action_Controller
 				'message' => parse_bbc($row['body']),
 				'time' => standardTime($row['log_time']),
 				'html_time' => htmlTime($row['log_time']),
-				'time' => forum_time(true, $row['log_time']),
+				'timestamp' => forum_time(true, $row['log_time']),
 				'member' => array(
 					'id' => $row['id_member'],
 					'name' => $row['moderator'],
@@ -1001,11 +999,11 @@ class ModerationCenter_Controller extends Action_Controller
 
 			if (!empty($toDelete))
 			{
-				require_once(SUBSDIR . '/Messages.subs.php');
+				$remover = new MessagesDelete($modSettings['recycle_enable'], $modSettings['recycle_board']);
 
 				// If they don't have permission we'll let it error - either way no chance of a security slip here!
 				foreach ($toDelete as $did)
-					removeMessage($did);
+					$remover->removeMessage($did);
 			}
 		}
 
@@ -1186,16 +1184,6 @@ class ModerationCenter_Controller extends Action_Controller
 		require_once(SUBSDIR . '/Moderation.subs.php');
 		loadLanguage('Modlog');
 
-		// Do the column stuff!
-		$sort_types = array(
-			'member' => 'mem.real_name',
-			'recipient' => 'recipient_name',
-		);
-
-		// Setup the direction stuff...
-		$context['order'] = isset($_REQUEST['sort']) && isset($sort_types[$_REQUEST['sort']]) ? $_REQUEST['sort'] : 'member';
-		$context['url_start'] = '?action=moderate;area=warnings;sa=log;sort='.  $context['order'];
-
 		// If we're coming in from a search, get the variables.
 		if (!empty($_REQUEST['params']) && empty($_REQUEST['is_search']))
 		{
@@ -1208,6 +1196,10 @@ class ModerationCenter_Controller extends Action_Controller
 			'member' => array('sql' => 'mem.real_name', 'label' => $txt['profile_warning_previous_issued']),
 			'recipient' => array('sql' => 'recipient_name', 'label' => $txt['mc_warnings_recipient']),
 		);
+
+		// Setup the allowed quick search type
+		$context['order'] = isset($_REQUEST['sort']) && isset($searchTypes[$_REQUEST['sort']]) ? $_REQUEST['sort'] : 'member';
+		$context['url_start'] = '?action=moderate;area=warnings;sa=log;sort='.  $context['order'];
 
 		if (!isset($search_params['string']) || (!empty($_REQUEST['search']) && $search_params['string'] != $_REQUEST['search']))
 			$search_params_string = empty($_REQUEST['search']) ? '' : $_REQUEST['search'];
@@ -1337,7 +1329,7 @@ class ModerationCenter_Controller extends Action_Controller
 					'position' => 'below_table_data',
 					'value' => '
 						<div id="quick_log_search">
-							' . $txt['modlog_search'] . ' (' . $txt['modlog_by'] . ': ' . $context['search']['label'] . '):
+							' . $txt['modlog_search'] . ' (' . $txt['modlog_by'] . ': ' . $context['search']['label'] . ')
 							<input type="text" name="search" size="18" value="' . Util::htmlspecialchars($context['search']['string']) . '" class="input_text" />
 							<input type="submit" name="is_search" value="' . $txt['modlog_go'] . '" class="button_submit" />
 						</div>',

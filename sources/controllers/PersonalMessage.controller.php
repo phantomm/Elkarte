@@ -15,7 +15,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -493,7 +493,7 @@ class PersonalMessage_Controller extends Action_Controller
 	 */
 	public function action_send()
 	{
-		global $txt, $scripturl, $modSettings, $context, $language, $user_info;
+		global $txt, $scripturl, $modSettings, $context, $user_info;
 
 		// Load in some text and template dependencies
 		loadLanguage('PersonalMessage');
@@ -544,18 +544,7 @@ class PersonalMessage_Controller extends Action_Controller
 			markMessages($pmsg);
 
 			// Figure out which flavor or 'Re: ' to use
-			if (!isset($context['response_prefix']) && !($context['response_prefix'] = cache_get_data('response_prefix')))
-			{
-				if ($language === $user_info['language'])
-					$context['response_prefix'] = $txt['response_prefix'];
-				else
-				{
-					loadLanguage('index', $language, false);
-					$context['response_prefix'] = $txt['response_prefix'];
-					loadLanguage('index');
-				}
-				cache_put_data('response_prefix', $context['response_prefix'], 600);
-			}
+			$context['response_prefix'] = response_prefix();
 
 			$form_subject = $row_quoted['subject'];
 
@@ -1559,26 +1548,26 @@ class PersonalMessage_Controller extends Action_Controller
 				'groups' => $js_groups,
 				'labels' => $js_labels,
 				'rules' => $js_rules,
-				'txt_pm_readable_and' => '"' . $txt['pm_readable_and'] . '"',
-				'txt_pm_readable_or' => '"' . $txt['pm_readable_or'] . '"',
-				'txt_pm_readable_member' => '"' . $txt['pm_readable_member'] . '"',
-				'txt_pm_readable_group' => '"' . $txt['pm_readable_group'] . '"',
-				'txt_pm_readable_subject ' => '"' . $txt['pm_readable_subject'] . '"',
-				'txt_pm_readable_body' => '"' . $txt['pm_readable_body'] . '"',
-				'txt_pm_readable_buddy' => '"' . $txt['pm_readable_buddy'] . '"',
-				'txt_pm_readable_label' => '"' . $txt['pm_readable_label'] . '"',
-				'txt_pm_readable_delete' => '"' . $txt['pm_readable_delete'] . '"',
-				'txt_pm_readable_start' => '"' . $txt['pm_readable_start'] . '"',
-				'txt_pm_readable_end' => '"' . $txt['pm_readable_end'] . '"',
-				'txt_pm_readable_then' => '"' . $txt['pm_readable_then'] . '"',
-				'txt_pm_rule_not_defined' => '"' . $txt['pm_rule_not_defined'] . '"',
-				'txt_pm_rule_criteria_pick' => '"' . $txt['pm_rule_criteria_pick'] . '"',
-				'txt_pm_rule_sel_group' => '"' . $txt['pm_rule_sel_group'] . '"',
-				'txt_pm_rule_sel_action' => '"' . $txt['pm_rule_sel_action'] . '"',
-				'txt_pm_rule_label' => '"' . $txt['pm_rule_label'] . '"',
-				'txt_pm_rule_delete' => '"' . $txt['pm_rule_delete'] . '"',
-				'txt_pm_rule_sel_label' => '"' . $txt['pm_rule_sel_label'] . '"'
-			));
+				'txt_pm_readable_and' => $txt['pm_readable_and'],
+				'txt_pm_readable_or' => $txt['pm_readable_or'],
+				'txt_pm_readable_member' => $txt['pm_readable_member'],
+				'txt_pm_readable_group' => $txt['pm_readable_group'],
+				'txt_pm_readable_subject ' => $txt['pm_readable_subject'],
+				'txt_pm_readable_body' => $txt['pm_readable_body'],
+				'txt_pm_readable_buddy' => $txt['pm_readable_buddy'],
+				'txt_pm_readable_label' => $txt['pm_readable_label'],
+				'txt_pm_readable_delete' => $txt['pm_readable_delete'],
+				'txt_pm_readable_start' => $txt['pm_readable_start'],
+				'txt_pm_readable_end' => $txt['pm_readable_end'],
+				'txt_pm_readable_then' => $txt['pm_readable_then'],
+				'txt_pm_rule_not_defined' => $txt['pm_rule_not_defined'],
+				'txt_pm_rule_criteria_pick' => $txt['pm_rule_criteria_pick'],
+				'txt_pm_rule_sel_group' => $txt['pm_rule_sel_group'],
+				'txt_pm_rule_sel_action' => $txt['pm_rule_sel_action'],
+				'txt_pm_rule_label' => $txt['pm_rule_label'],
+				'txt_pm_rule_delete' => $txt['pm_rule_delete'],
+				'txt_pm_rule_sel_label' => $txt['pm_rule_sel_label'],
+			), true);
 
 			// Current rule information...
 			if ($context['rid'])
@@ -2262,7 +2251,7 @@ function messageIndexBar($area)
 				'send' => array(
 					'label' => $txt['new_message'],
 					'custom_url' => $scripturl . '?action=pm;sa=send',
-					'permission' => allowedTo('pm_send'),
+					'permission' => 'pm_send',
 				),
 				'sent' => array(
 					'label' => $txt['sent_items'],
@@ -2271,7 +2260,7 @@ function messageIndexBar($area)
 				'drafts' => array(
 					'label' => $txt['drafts_show'],
 					'custom_url' => $scripturl . '?action=pm;sa=showpmdrafts',
-					'permission' => allowedTo('pm_draft'),
+					'permission' => 'pm_draft',
 					'enabled' => !empty($modSettings['drafts_enabled']) && !empty($modSettings['drafts_pm_enabled']),
 				),
 			),
@@ -2357,13 +2346,11 @@ function messageIndexBar($area)
 	// Set a few options for the menu.
 	$menuOptions = array(
 		'current_area' => $area,
+		'hook' => 'pm',
 		'disable_url_session_check' => true,
 		'counters' => !empty($label_counters) ? $label_counters : 0,
 		'default_include_dir' => CONTROLLERDIR,
 	);
-
-	// Let them modify PM areas easily.
-	call_integration_hook('integrate_pm_areas', array(&$pm_areas, &$menuOptions));
 
 	// Actually create the menu!
 	$pm_include_data = createMenu($pm_areas, $menuOptions);
@@ -2739,7 +2726,7 @@ function prepareDraftsContext($member_id, $id_pm = false)
 	// Add them to the context draft array for template display
 	foreach ($user_drafts as $draft)
 	{
-		$short_subject = empty($draft['subject']) ? $txt['drafts_none'] : shorten_text(stripslashes($draft['subject']), !empty($modSettings['draft_subject_length']) ? $modSettings['draft_subject_length'] : 24);
+		$short_subject = empty($draft['subject']) ? $txt['drafts_none'] : Util::shorten_text(stripslashes($draft['subject']), !empty($modSettings['draft_subject_length']) ? $modSettings['draft_subject_length'] : 24);
 		$context['drafts'][] = array(
 			'subject' => censorText($short_subject),
 			'poster_time' => standardTime($draft['poster_time']),

@@ -56,6 +56,15 @@ if ($db->num_rows($request) > 0)
 	echo "\n" . 'Errors found:' . "\n";
 while ($row = $db->fetch_assoc($request))
 {
+	// If any of these errors happen is a very bad thing
+	if (in_array($row['error_type'], array('undefined_vars', 'database', 'template', )))
+	{
+		echo '*****************************' . "\n";
+		echo '*       Build failure       *' . "\n";
+		echo '*****************************' . "\n";
+		$final_return++;
+	}
+
 	echo 'Error ' . $row['id_error'] . "\n";
 	echo 'url: ' . $row['url'] . "\n";
 	echo 'message: ' . $row['message'] . "\n";
@@ -66,6 +75,14 @@ while ($row = $db->fetch_assoc($request))
 }
 
 echo "\n" . 'Test cases run: ' . $global_results['tests_run'][0] . '/' . $global_results['tests_run'][1] . ', Passes: ' . $global_results['passes'] . ', Failures: ' . $global_results['failures'] . ', Exceptions: ' . $global_results['exceptions'] . "\n";
+
+$db_errors = trim(file_get_contents(BOARDDIR . '/db_last_error.txt'));
+
+if (!empty($db_errors))
+{
+	echo 'A database error occurred!' . "\n";
+	$final_return++;
+}
 
 exit($final_return);
 

@@ -14,7 +14,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
@@ -116,9 +116,6 @@ class ManageSearch_Controller extends Action_Controller
 
 		$config_vars = $this->_searchSettings->settings();
 
-		if (!isset($context['settings_post_javascript']))
-			$context['settings_post_javascript'] = '';
-
 		// Perhaps the search method wants to add some settings?
 		require_once(SUBSDIR . '/Search.subs.php');
 		$searchAPI = findSearchAPI();
@@ -163,7 +160,7 @@ class ManageSearch_Controller extends Action_Controller
 				}
 			}
 			updateSettings(array(
-				'additional_search_engines' => !empty($new_engines) ? serialize($new_engines) : null
+				'additional_search_engines' => !empty($new_engines) ? serialize($new_engines) : ''
 			));
 
 			Settings_Form::save_db($config_vars);
@@ -521,6 +518,7 @@ class ManageSearch_Controller extends Action_Controller
 	 * Edit settings related to the sphinx or sphinxQL search function.
 	 *
 	 * - Called by ?action=admin;area=managesearch;sa=sphinx.
+	 * - Checks if connection to search daemon is possible
 	 */
 	public function action_managesphinx()
 	{
@@ -557,7 +555,7 @@ class ManageSearch_Controller extends Action_Controller
 			}
 
 			// Try to connect via Sphinx API?
-			if ($modSettings['search_index'] === 'sphinx' || empty($modSettings['search_index']))
+			if (!empty($modSettings['search_index']) && ($modSettings['search_index'] === 'sphinx' || empty($modSettings['search_index'])))
 			{
 				if (@file_exists(SOURCEDIR . '/sphinxapi.php'))
 				{
@@ -585,11 +583,11 @@ class ManageSearch_Controller extends Action_Controller
 			}
 
 			// Try to connect via SphinxQL
-			if ($modSettings['search_index'] === 'sphinxql' || empty($modSettings['search_index']))
+			if (!empty($modSettings['search_index']) && ($modSettings['search_index'] === 'sphinxql' || empty($modSettings['search_index'])))
 			{
 				if (!empty($modSettings['sphinx_searchd_server']) && !empty($modSettings['sphinxql_searchd_port']))
 				{
-					$result = @mysql_connect(($modSettings['sphinx_searchd_server'] === 'localhost' ? '127.0.0.1' : $modSettings['sphinx_searchd_server']) . ':' . (int) $modSettings['sphinxql_searchd_port']);
+					$result = @mysqli_connect(($modSettings['sphinx_searchd_server'] === 'localhost' ? '127.0.0.1' : $modSettings['sphinx_searchd_server']), '', '', '', (int) $modSettings['sphinxql_searchd_port']);
 					if ($result === false)
 					{
 						$context['settings_message'][] = $txt['sphinxql_test_connect_failed'];
@@ -648,8 +646,8 @@ class ManageSearch_Controller extends Action_Controller
 
 					if (strpos($header, '* SearchAPI-' . $matches[1] . '.class.php') !== false)
 					{
-						$index_name = strtolower($matches[1]);
-						$search_class_name = $index_name . '_search';
+						$index_name = ucwords($matches[1]);
+						$search_class_name = $index_name . '_Search';
 						$searchAPI = new $search_class_name();
 
 						// No Support?  NEXT!

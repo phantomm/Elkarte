@@ -7,7 +7,7 @@
  * @copyright ElkArte Forum contributors
  * @license   BSD http://opensource.org/licenses/BSD-3-Clause
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.1
  *
  */
 
@@ -277,7 +277,15 @@ function determineActions($urls, $preferred_prefix = false)
 			{
 				// Whose?  Their own?
 				if (empty($actions['u']))
-					$actions['u'] = $url[1];
+				{
+					require_once(SUBSDIR . '/Profile.subs.php');
+					$memID = currentMemberID();
+
+					if ($memID == $user_info['id'])
+						$actions['u'] = $url[1];
+					else
+						$actions['u'] = $memID;
+				}
 
 				$data[$k] = $txt['who_hidden'];
 				$profile_ids[(int) $actions['u']][$k] = $actions['action'] == 'profile' ? $txt['who_viewprofile'] : $txt['who_profile'];
@@ -459,6 +467,12 @@ function prepareCreditsData()
 						$txt['credits_contrib_list'],
 					),
 				),
+				array(
+					'title' => $txt['credits_groups_translators'],
+					'members' => array(
+						$txt['credits_translators_message'],
+					),
+				),
 			),
 		),
 	);
@@ -479,6 +493,7 @@ function prepareCreditsData()
 			'<a href="http://openfontlibrary.org/en/font/vshexagonica-v1-0-1">vSHexagonica</a> | &copy; 2012 T.B. von Strong | This font is licensed under the SIL Open Font License, Version 1.1',
 		),
 		'software' => array(
+			'<a href="http://ichord.github.com/At.js">At.js</a> | &copy; Chord Luo | Licensed under <a href="http://opensource.org/licenses/MIT">The MIT License (MIT)</a>',
 			'<a href="http://bad-behavior.ioerror.us/">Bad Behavior</a> | &copy; Michael Hampton | Licensed under <a href="http://opensource.org/licenses/LGPL-3.0">GNU Lesser General Public License</a>',
 			'<a href="https://code.google.com/p/google-code-prettify/">Google Code Prettify</a> | Licensed under <a href="http://opensource.org/licenses/Apache-2.0">Apache License, Version 2.0</a>',
 			'<a href="http://cherne.net/brian/resources/jquery.hoverIntent.html">hoverIntent</a> | &copy; Brian Cherne | Licensed under <a href="http://opensource.org/licenses/MIT">The MIT License (MIT)</a>',

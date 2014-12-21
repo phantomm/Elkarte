@@ -9,7 +9,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  * Handle the JavaScript surrounding the admin and moderation center.
  */
@@ -66,7 +66,7 @@ elk_AdminIndex.prototype.setAnnouncement = function (announcement)
 		sMessages = this.init_news ? oElem.innerHTML : '',
 		sMessage = '';
 
-	sMessage = this.opt.sAnnouncementMessageTemplate.replace('%href%', announcement.html_url).replace('%subject%', announcement.name).replace('%time%', announcement.published_at.replace(/[TZ]/g, ' ')).replace('%message%', announcement.body);
+	sMessage = this.opt.sAnnouncementMessageTemplate.replace('%href%', announcement.html_url).replace('%subject%', announcement.name).replace('%time%', announcement.published_at.replace(/[TZ]/g, ' ')).replace('%message%', announcement.body).replace(/\n/g, '<br />').replace(/\r/g, '');
 
 	oElem.innerHTML = sMessages + this.opt.sAnnouncementTemplate.replace('%content%', sMessage);
 	this.init_news = true;
@@ -79,7 +79,8 @@ elk_AdminIndex.prototype.showCurrentVersion = function ()
 		oinstalledVersionContainer = document.getElementById(this.opt.sinstalledVersionContainerId),
 		sCurrentVersion = oinstalledVersionContainer.innerHTML,
 		adminIndex = this,
-		elkVersion = '???';
+		elkVersion = '???',
+		verCompare = new elk_ViewVersions();
 
 	$.getJSON('https://api.github.com/repos/elkarte/Elkarte/releases', {format: "json"},
 	function(data, textStatus, jqXHR) {
@@ -94,7 +95,7 @@ elk_AdminIndex.prototype.showCurrentVersion = function ()
 
 			var release = adminIndex.normalizeVersion(elem.tag_name);
 
-			if (!previous.hasOwnProperty('major') || adminIndex.compareVersion(release, previous))
+			if (!previous.hasOwnProperty('major') || verCompare.compareVersions(sCurrentVersion, elem.tag_name.replace('-', '').substring(1)))
 			{
 				// Using a preprelease? Then you may need to know a new one is out!
 				if ((elem.prerelease && adminIndex.current.prerelease) || (!elem.prerelease))
@@ -111,7 +112,7 @@ elk_AdminIndex.prototype.showCurrentVersion = function ()
 		elkVersion = mostRecent.name.replace(/elkarte/i, '').trim();
 
 		oElkVersionContainer.innerHTML = elkVersion;
-		if (sCurrentVersion !== elkVersion)
+		if (verCompare.compareVersions(sCurrentVersion, elkVersion))
 			oinstalledVersionContainer.innerHTML = adminIndex.opt.sVersionOutdatedTemplate.replace('%currentVersion%', sCurrentVersion);
 	});
 };
@@ -154,16 +155,18 @@ elk_AdminIndex.prototype.normalizeVersion = function (sVersion)
 		minor: 0,
 		micro: 0,
 		prerelease: false,
+		status: 0,
 		nano: 0
 	},
-	prerelease = false;
+	prerelease = false,
+	aDevConvert = {'dev': 0, 'alpha': 1, 'beta': 2, 'rc': 3, 'stable': 4};
 
 	for (var i = 0; i < splitVersion.length; i++)
 	{
 		if (splitVersion[i].toLowerCase() === 'elkarte')
 			continue;
 
-		if (splitVersion[i].substring(0, 4).toLowerCase() === 'beta' || splitVersion[i].substring(0, 2).toLowerCase() === 'rc')
+		if (splitVersion[i].substring(0, 3).toLowerCase() === 'dev' || splitVersion[i].substring(0, 5).toLowerCase() === 'alpha' || splitVersion[i].substring(0, 4).toLowerCase() === 'beta' || splitVersion[i].substring(0, 2).toLowerCase() === 'rc')
 		{
 			normalVersion.prerelease = true;
 			prerelease = true;
@@ -173,6 +176,8 @@ elk_AdminIndex.prototype.normalizeVersion = function (sVersion)
 			{
 				var splitPre = splitVersion[i].split('.');
 				normalVersion.nano = parseFloat(splitPre[1]);
+				normalVersion.nano = parseFloat(splitVersion[i].substr(splitVersion[i].indexOf('.') + 1));
+				normalVersion.status = aDevConvert[splitVersion[i].substr(0, splitVersion[i].indexOf('.')).toLowerCase()];
 			}
 		}
 
@@ -290,7 +295,7 @@ elk_ViewVersions.prototype.compareVersions = function (sCurrent, sTarget)
 	{
 		// Clean the version and extract the version parts.
 		var sClean = aCompare[i].toLowerCase().replace(/ /g, '').replace(/release candidate/g, 'rc');
-		aParts = sClean.match(/(\d+)(?:\.(\d+|))?(?:\.)?(\d+|)(?:(alpha|beta|rc)(\d+|)(?:\.)?(\d+|))?(?:(dev))?(\d+|)/);
+		aParts = sClean.match(/(\d+)(?:\.(\d+|))?(?:\.)?(\d+|)(?:(alpha|beta|rc)\.*(\d+|)(?:\.)?(\d+|))?(?:(dev))?(\d+|)/);
 
 		// No matches?
 		if (aParts === null)
@@ -979,55 +984,19 @@ function select_in_category(operation, brd_list)
  * Server Settings > Caching, toggles input fields on/off as appropriate for
  * a given cache engine selection
  */
-function toggleCache ()
-{
-	var memcache = document.getElementById('cache_memcached'),
-		cachedir = document.getElementById('cachedir'),
-		cacheuid = document.getElementById('cache_uid'),
-		cachepassword = document.getElementById('cache_password');
+$(document).ready(function() {
+	$('#cache_accelerator').change(function() {
+		// Hide all the settings
+		$('#cache_accelerator option').each(function() {
+			$('[id^=' + $(this).val() + '_]').hide();
+		});
 
-	// Show the memcache server box only if memcache has been selected
-	if (cache_type.value !== "memcached")
-	{
-		$(memcache).slideUp();
-		$(memcache).parent().prev().slideUp(100);
-	}
-	else
-	{
-		$(memcache).slideDown();
-		$(memcache).parent().prev().slideDown(100);
-	}
-
-	// don't show the directory if its not filebased
-	if (cache_type.value === "filebased")
-	{
-		$(cachedir).slideDown();
-		$(cachedir).parent().prev().slideDown(100);
-	}
-	else
-	{
-		$(cachedir).slideUp(100);
-		$(cachedir).parent().prev().slideUp(100);
-	}
-
-	// right now only xcache needs the uid/password
-	if (cache_type.value === "xcache")
-	{
-		$(cacheuid).slideDown(100);
-		$(cacheuid).parent().prev().slideDown(100);
-		$(cachepassword).slideDown(100);
-		$(cachepassword).parent().slideDown(100);
-		$(cachepassword).parent().prev().slideDown(100);
-	}
-	else
-	{
-		$(cacheuid).slideUp(100);
-		$(cacheuid).parent().prev().slideUp(100);
-		$(cachepassword).slideUp(100);
-		$(cachepassword).parent().slideUp(100);
-		$(cachepassword).parent().prev().slideUp(100);
-	}
-}
+		// Show the settings of the selected engine
+		$('[id^=' + $(this).val() + '_]').show();
+	})
+	// Trigger a change action so that the form is properly initialized
+	.change();
+});
 
 /**
  * Hides local / subdomain cookie options in the ACP based on selected choices
@@ -1375,7 +1344,7 @@ function initEditProfileBoards()
 		$('.edit_board').click();
 	});
 
-	$('.edit_board').show().click(function(e) {
+	$('.edit_board').show().on('click.elkarte', function(e) {
 		var $icon = $(this),
 			board_id = $icon.data('boardid'),
 			board_profile = $icon.data('boardprofile'),
@@ -1384,7 +1353,7 @@ function initEditProfileBoards()
 				.attr('name', 'boardprofile[' + board_id + ']')
 				.change(function() {
 					$(this).find('option:selected').each(function() {
-						if ($(this).attr('value') === board_profile)
+						if ($(this).attr('value') == board_profile)
 							$icon.addClass('nochanges').removeClass('changed');
 						else
 							$icon.addClass('changed').removeClass('nochanges');
@@ -1408,6 +1377,11 @@ function initEditProfileBoards()
 			.attr('name', 'save_changes')
 			.attr('value', txt_save)
 		);
+		$icon.off('click.elkarte').click(function(e) {
+			e.preventDefault();
+			if ($(this).hasClass('changed'))
+				$('input[name="save_changes"]').click();
+		});
 	});
 }
 

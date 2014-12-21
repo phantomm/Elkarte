@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
@@ -50,7 +50,7 @@ class Display_Controller
 	{
 		global $scripturl, $txt, $modSettings, $context, $settings;
 		global $options, $user_info, $board_info, $topic, $board;
-		global $attachments, $messages_request, $language;
+		global $attachments, $messages_request;
 
 		// What are you gonna display if these are empty?!
 		if (empty($topic))
@@ -62,6 +62,7 @@ class Display_Controller
 
 		// And the topic functions
 		require_once(SUBSDIR . '/Topic.subs.php');
+		require_once(SUBSDIR . '/Messages.subs.php');
 
 		// Not only does a prefetch make things slower for the server, but it makes it impossible to know if they read it.
 		stop_prefetching();
@@ -70,6 +71,7 @@ class Display_Controller
 		$context['messages_per_page'] = empty($modSettings['disableCustomPerPage']) && !empty($options['messages_per_page']) ? $options['messages_per_page'] : $modSettings['defaultMaxMessages'];
 		$template_layers = Template_Layers::getInstance();
 		$template_layers->addEnd('messages_informations');
+		$includeUnapproved = !$modSettings['postmod_active'] || allowedTo('approve_posts');
 
 		// Let's do some work on what to search index.
 		if (count($_GET) > 2)
@@ -90,7 +92,6 @@ class Display_Controller
 			// No use in calculating the next topic if there's only one.
 			if ($board_info['num_topics'] > 1)
 			{
-				$includeUnapproved = (!$modSettings['postmod_active'] || allowedTo('approve_posts'));
 				$includeStickies = !empty($modSettings['enableStickyTopics']);
 				$topic = $_REQUEST['prev_next'] === 'prev' ? previousTopic($topic, $board, $user_info['id'], $includeUnapproved, $includeStickies) : nextTopic($topic, $board, $user_info['id'], $includeUnapproved, $includeStickies);
 				$context['current_topic'] = $topic;
@@ -148,14 +149,14 @@ class Display_Controller
 		if ($modSettings['postmod_active'] && allowedTo('approve_posts'))
 			$context['real_num_replies'] += $topicinfo['unapproved_posts'] - ($topicinfo['approved'] ? 0 : 1);
 
-		// If this topic has unapproved posts, we need to work out how many posts the user can see, for page indexing.
-		$includeUnapproved = !$modSettings['postmod_active'] || allowedTo('approve_posts');
+		// If this topic was derived from another, set the followup details
 		if (!empty($topicinfo['derived_from']))
 		{
 			require_once(SUBSDIR . '/FollowUps.subs.php');
 			$context['topic_derived_from'] = topicStartedHere($topic, $includeUnapproved);
 		}
 
+		// If this topic has unapproved posts, we need to work out how many posts the user can see, for page indexing.
 		if (!$includeUnapproved && $topicinfo['unapproved_posts'] && !$user_info['is_guest'])
 		{
 			$myUnapprovedPosts = unapprovedPosts($topic, $user_info['id']);
@@ -170,7 +171,6 @@ class Display_Controller
 		// When was the last time this topic was replied to?  Should we warn them about it?
 		if (!empty($modSettings['oldTopicDays']))
 		{
-			require_once(SUBSDIR . '/Messages.subs.php');
 			$mgsOptions = basicMessageInfo($topicinfo['id_last_msg'], true);
 			$context['oldTopicError'] = $mgsOptions['poster_time'] + $modSettings['oldTopicDays'] * 86400 < time() && empty($topicinfo['is_sticky']);
 		}
@@ -245,6 +245,8 @@ class Display_Controller
 				'go_prev' => $scripturl . '?topic=' . $topic . '.0;prev_next=prev#new',
 				'go_next' => $scripturl . '?topic=' . $topic . '.0;prev_next=next#new'
 			);
+
+		// Derived from, set the link back
 		if (!empty($context['topic_derived_from']))
 			$context['links']['derived_from'] = $scripturl . '?msg=' . $context['topic_derived_from']['derived_from'];
 
@@ -338,16 +340,6 @@ class Display_Controller
 		$context['moderators'] = &$board_info['moderators'];
 		$context['link_moderators'] = array();
 
-		if (!empty($board_info['moderators']))
-		{
-			// Add a link for each moderator...
-			foreach ($board_info['moderators'] as $mod)
-				$context['link_moderators'][] = '<a href="' . $scripturl . '?action=profile;u=' . $mod['id'] . '" title="' . $txt['board_moderator'] . '">' . $mod['name'] . '</a>';
-
-			// And show it after the board's name.
-			$context['linktree'][count($context['linktree']) - 2]['extra_after'] = '<span class="board_moderators"> (' . (count($context['link_moderators']) == 1 ? $txt['moderator'] : $txt['moderators']) . ': ' . implode(', ', $context['link_moderators']) . ')</span>';
-		}
-
 		// Information about the current topic...
 		$context['is_locked'] = $topicinfo['locked'];
 		$context['is_sticky'] = $topicinfo['is_sticky'];
@@ -371,18 +363,7 @@ class Display_Controller
 		$context['canonical_url'] = $scripturl . '?topic=' . $topic . '.' . $context['start'];
 
 		// For quick reply we need a response prefix in the default forum language.
-		if (!isset($context['response_prefix']) && !($context['response_prefix'] = cache_get_data('response_prefix', 600)))
-		{
-			if ($language === $user_info['language'])
-				$context['response_prefix'] = $txt['response_prefix'];
-			else
-			{
-				loadLanguage('index', $language, false);
-				$context['response_prefix'] = $txt['response_prefix'];
-				loadLanguage('index');
-			}
-			cache_put_data('response_prefix', $context['response_prefix'], 600);
-		}
+		$context['response_prefix'] = response_prefix();
 
 		// If we want to show event information in the topic, prepare the data.
 		if (allowedTo('calendar_view') && !empty($modSettings['cal_showInTopic']) && !empty($modSettings['cal_enabled']))
@@ -644,7 +625,7 @@ class Display_Controller
 		// Cleanup all the permissions with extra stuff...
 		$context['can_mark_notify'] &= !$context['user']['is_guest'];
 		$context['can_sticky'] &= !empty($modSettings['enableStickyTopics']);
-		$context['calendar_post'] &= !empty($modSettings['cal_enabled']);
+		$context['calendar_post'] &= !empty($modSettings['cal_enabled']) && (allowedTo('modify_any') || ($context['user']['started'] && allowedTo('modify_own')));
 		$context['can_add_poll'] &= !empty($modSettings['pollMode']) && $topicinfo['id_poll'] <= 0;
 		$context['can_remove_poll'] &= !empty($modSettings['pollMode']) && $topicinfo['id_poll'] > 0;
 		$context['can_reply'] &= empty($topicinfo['locked']) || allowedTo('moderate_board');
@@ -762,7 +743,7 @@ class Display_Controller
 			'notify' => array( 'test' => 'can_mark_notify', 'text' => $context['is_marked_notify'] ? 'unnotify' : 'notify', 'image' => ($context['is_marked_notify'] ? 'un' : '') . 'notify.png', 'lang' => true, 'custom' => 'onclick="return notifyButton(this);"', 'url' => $scripturl . '?action=notify;sa=' . ($context['is_marked_notify'] ? 'off' : 'on') . ';topic=' . $context['current_topic'] . '.' . $context['start'] . ';' . $context['session_var'] . '=' . $context['session_id']),
 			'mark_unread' => array('test' => 'can_mark_unread', 'text' => 'mark_unread', 'image' => 'markunread.png', 'lang' => true, 'url' => $scripturl . '?action=markasread;sa=topic;t=' . $context['mark_unread_time'] . ';topic=' . $context['current_topic'] . '.' . $context['start'] . ';' . $context['session_var'] . '=' . $context['session_id']),
 			'unwatch' => array('test' => 'can_unwatch', 'text' => ($context['topic_unwatched'] ? '' : 'un') . 'watch', 'image' => ($context['topic_unwatched'] ? '' : 'un') . 'watched.png', 'lang' => true, 'custom' => 'onclick="return unwatchButton(this);"', 'url' => $scripturl . '?action=unwatchtopic;topic=' . $context['current_topic'] . '.' . $context['start'] . ';sa=' . ($context['topic_unwatched'] ? 'off' : 'on') . ';' . $context['session_var'] . '=' . $context['session_id']),
-			'send' => array('test' => 'can_send_topic', 'text' => 'send_topic', 'image' => 'sendtopic.png', 'lang' => true, 'url' => $scripturl . '?action=emailuser;sa=sendtopic;topic=' . $context['current_topic'] . '.0', 'custom' => 'onclick="return sendtopicOverlayDiv(this.href, \'' . $txt['send_topic'] . '\', \'\');"'),
+			'send' => array('test' => 'can_send_topic', 'text' => 'send_topic', 'image' => 'sendtopic.png', 'lang' => true, 'url' => $scripturl . '?action=emailuser;sa=sendtopic;topic=' . $context['current_topic'] . '.0', 'custom' => 'onclick="return sendtopicOverlayDiv(this.href, \'' . $txt['send_topic'] . '\');"'),
 			'print' => array('test' => 'can_print', 'text' => 'print', 'image' => 'print.png', 'lang' => true, 'custom' => 'rel="nofollow"', 'class' => 'new_win', 'url' => $scripturl . '?action=topic;sa=printpage;topic=' . $context['current_topic'] . '.0'),
 		);
 
@@ -795,7 +776,7 @@ class Display_Controller
 	 */
 	public function action_quickmod2()
 	{
-		global $topic, $board, $user_info, $context;
+		global $topic, $board, $user_info, $context, $modSettings;
 
 		// Check the session = get or post.
 		checkSession('request');
@@ -803,7 +784,7 @@ class Display_Controller
 		require_once(SUBSDIR . '/Messages.subs.php');
 
 		if (empty($_REQUEST['msgs']))
-			redirectexit('topic=' . $topic . '.' . $_REQUEST['start']);
+			redirectexit('topic=' . $topic . '.' . (int) $_REQUEST['start']);
 
 		$messages = array();
 		foreach ($_REQUEST['msgs'] as $dummy)
@@ -843,6 +824,7 @@ class Display_Controller
 		// Get the first message in the topic - because you can't delete that!
 		$first_message = $topic_info['id_first_msg'];
 		$last_message = $topic_info['id_last_msg'];
+		$remover = new MessagesDelete($modSettings['recycle_enable'], $modSettings['recycle_board']);
 
 		// Delete all the messages we know they can delete. ($messages)
 		foreach ($messages as $message => $info)
@@ -854,14 +836,10 @@ class Display_Controller
 			elseif ($message == $first_message)
 				$topicGone = true;
 
-			removeMessage($message);
-
-			// Log this moderation action ;).
-			if (allowedTo('delete_any') && (!allowedTo('delete_own') || $info[1] != $user_info['id']))
-				logAction('delete', array('topic' => $topic, 'subject' => $info[0], 'member' => $info[1], 'board' => $board));
+			$remover->removeMessage($message);
 		}
 
-		redirectexit(!empty($topicGone) ? 'board=' . $board : 'topic=' . $topic . '.' . $_REQUEST['start']);
+		redirectexit(!empty($topicGone) ? 'board=' . $board : 'topic=' . $topic . '.' . (int) $_REQUEST['start']);
 	}
 
 	/**
@@ -989,6 +967,7 @@ class Display_Controller
 			'can_unlike' => $message['use_likes'] && $message['you_liked'],
 			'like_counter' => $message['like_count'],
 			'likes_enabled' => !empty($modSettings['likes_enabled']) && ($message['use_likes'] || ($message['like_count'] != 0)),
+			'classes' => array(),
 		);
 
 		if (!empty($output['modified']['name']))
@@ -1003,6 +982,8 @@ class Display_Controller
 		}
 
 		call_integration_hook('integrate_prepare_display_context', array(&$output, &$message));
+
+		$output['classes'] = implode(' ', $output['classes']);
 
 		$counter++;
 

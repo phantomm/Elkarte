@@ -7,7 +7,7 @@
  * @copyright ElkArte Forum contributors
  * @license   BSD http://opensource.org/licenses/BSD-3-Clause
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
@@ -89,7 +89,7 @@ class Action
 	 * @param string $default default action if unknown sa is requested
 	 * @return string
 	 */
-	public function initialize($subactions, $default = '')
+	public function initialize(&$subactions, $default = '', $requestParam = 'sa')
 	{
 		if ($this->_name !== null)
 			call_integration_hook('integrate_sa_' . $this->_name, array(&$subactions));
@@ -104,7 +104,7 @@ class Action
 		if (isset($subactions[$default]))
 			$this->_default = $default;
 
-		return isset($_REQUEST['sa']) && isset($this->_subActions[$_REQUEST['sa']]) ? $_REQUEST['sa'] : $this->_default;
+		return isset($_REQUEST[$requestParam]) && isset($this->_subActions[$_REQUEST[$requestParam]]) ? $_REQUEST[$requestParam] : $this->_default;
 	}
 
 	/**
@@ -169,7 +169,15 @@ class Action
 			if (isset($subAction['controller']))
 			{
 				// an OOP controller, call it over
-				$subAction['controller']->{$subAction['function']}();
+				if (is_object($subAction['controller']))
+					$subAction['controller']->{$subAction['function']}();
+				else
+				{
+					$controller_name = $subAction['controller'];
+					$controller = new $controller_name();
+
+					$controller->{$subAction['function']}();
+				}
 			}
 			elseif (is_array($subAction) && !isset($subAction['function']))
 			{

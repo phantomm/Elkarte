@@ -11,7 +11,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.1
  *
  */
 
@@ -225,10 +225,10 @@ function template_topic_listing()
 
 			if (!empty($settings['avatars_on_indexes']))
 				echo '
-						<span class="board_avatar"><a href="', $topic['last_post']['member']['href'], '">', $topic['last_post']['member']['avatar']['image'], '</a></span>';
+						<span class="board_avatar"><a href="', $topic['last_post']['member']['href'], '"><img class="avatar" src="', $topic['last_post']['member']['avatar']['href'], '" alt="" /></a></span>';
 
 			echo '
-						<a class="topicicon img_last_post', $context['right_to_left'] ? '_rtl' : '', '" href="', $topic['last_post']['href'], '" title="', $txt['last_post'], '"></a>
+						<a class="topicicon img_last_post', '" href="', $topic['last_post']['href'], '" title="', $txt['last_post'], '"></a>
 						', $topic['last_post']['html_time'], '<br />
 						', $txt['by'], ' ', $topic['last_post']['member']['link'], '
 					</p>
@@ -250,13 +250,13 @@ function template_topic_listing()
 						echo '<a class="topicicon img_remove" href="', $scripturl, '?action=quickmod;board=', $context['current_board'], '.', $context['start'], ';actions%5B', $topic['id'], '%5D=remove;', $context['session_var'], '=', $context['session_id'], '" onclick="return confirm(\'', $txt['quickmod_confirm'], '\');" title="', $txt['remove_topic'], '"></a>';
 
 					if ($topic['quick_mod']['lock'])
-						echo '<a class="topicicon img_locked" href="', $scripturl, '?action=quickmod;board=', $context['current_board'], '.', $context['start'], ';actions%5B', $topic['id'], '%5D=lock;', $context['session_var'], '=', $context['session_id'], '" onclick="return confirm(\'', $txt['quickmod_confirm'], '\');" title="', $txt['set_lock'], '"></a>';
+						echo '<a class="topicicon img_locked" href="', $scripturl, '?action=quickmod;board=', $context['current_board'], '.', $context['start'], ';actions%5B', $topic['id'], '%5D=lock;', $context['session_var'], '=', $context['session_id'], '" onclick="return confirm(\'', $txt['quickmod_confirm'], '\');" title="', $txt[$topic['is_locked'] ? 'set_unlock' : 'set_lock'], '"></a>';
 
 					if ($topic['quick_mod']['lock'] || $topic['quick_mod']['remove'])
 						echo '<br />';
 
 					if ($topic['quick_mod']['sticky'])
-						echo '<a class="topicicon img_sticky" href="', $scripturl, '?action=quickmod;board=', $context['current_board'], '.', $context['start'], ';actions%5B', $topic['id'], '%5D=sticky;', $context['session_var'], '=', $context['session_id'], '" onclick="return confirm(\'', $txt['quickmod_confirm'], '\');" title="', $txt['set_sticky'], '"></a>';
+						echo '<a class="topicicon img_sticky" href="', $scripturl, '?action=quickmod;board=', $context['current_board'], '.', $context['start'], ';actions%5B', $topic['id'], '%5D=sticky;', $context['session_var'], '=', $context['session_id'], '" onclick="return confirm(\'', $txt['quickmod_confirm'], '\');" title="', $txt[$topic['is_sticky'] ? 'set_nonsticky' : 'set_sticky'], '"></a>';
 
 					if ($topic['quick_mod']['move'])
 						echo '<a class="topicicon img_move" href="', $scripturl, '?action=movetopic;current_board=', $context['current_board'], ';board=', $context['current_board'], '.', $context['start'], ';topic=', $topic['id'], '.0" title="', $txt['move_topic'], '"></a>';

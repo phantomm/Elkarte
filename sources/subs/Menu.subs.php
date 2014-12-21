@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -81,6 +81,10 @@ function createMenu($menuData, $menuOptions = array())
 	// This will be all the data for this menu - and we'll make a shortcut to it to aid readability here.
 	$context['menu_data_' . $context['max_menu_id']] = array();
 	$menu_context = &$context['menu_data_' . $context['max_menu_id']];
+
+	// Allow extend *any* menu with a single hook
+	if (!empty($menuOptions['hook']))
+		call_integration_hook('integrate_' . $menuOptions['hook'] . '_areas', array(&$menuData, &$menuOptions));
 
 	// What is the general action of this menu (i.e. $scripturl?action=XXXX.
 	$menu_context['current_action'] = isset($menuOptions['action']) ? $menuOptions['action'] : $context['current_action'];
@@ -180,7 +184,7 @@ function createMenu($menuData, $menuOptions = array())
 
 						// Does this area have its own icon?
 						if (isset($area['icon']))
-							$menu_context['sections'][$section_id]['areas'][$area_id]['icon'] = '<img ' . (isset($area['class']) ? 'class="' . $area['class'] . '" ' : 'style="background: none"') . 'src="' . $context['menu_image_path'] . '/' . $area['icon'] . '" alt="" />&nbsp;&nbsp;';
+							$menu_context['sections'][$section_id]['areas'][$area_id]['icon'] = '<img ' . (isset($area['class']) ? 'class="' . $area['class'] . '" ' : 'style="background: none"') . ' src="' . $context['menu_image_path'] . '/' . $area['icon'] . '" alt="" />&nbsp;&nbsp;';
 						else
 							$menu_context['sections'][$section_id]['areas'][$area_id]['icon'] = '';
 

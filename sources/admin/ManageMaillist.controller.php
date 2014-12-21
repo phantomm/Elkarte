@@ -8,7 +8,7 @@
  * @copyright ElkArte Forum contributors
  * @license   BSD http://opensource.org/licenses/BSD-3-Clause
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -1884,7 +1884,7 @@ class ManageMaillist_Controller extends Action_Controller
 	 * @param int $id
 	 * - Callback for createList() to list_maillist_unapproved
 	 */
-	protected function list_maillist_unapproved($start, $chunk_size, $sort = '', $id = 0)
+	public function list_maillist_unapproved($start, $chunk_size, $sort = '', $id = 0)
 	{
 		return list_maillist_unapproved($id, $start, $chunk_size, $sort);
 	}

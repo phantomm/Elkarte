@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
@@ -218,6 +218,20 @@ function expandIPv6($addr, $strict_check = true)
 		$part[1] = explode(':', $part[1]);
 		$missing = array();
 
+		// Looks like this is an IPv4 address
+		if (strpos($part[1][1], '.') !== false)
+		{
+			$ipoct = explode('.', $part[1][1]);
+			$p1 = dechex($ipoct[0]) . dechex($ipoct[1]);
+			$p2 = dechex($ipoct[2]) . dechex($ipoct[3]);
+
+			$part[1] = array(
+				$part[1][0],
+				$p1,
+				$p2
+			);
+		}
+
 		$limit = count($part[0]) + count($part[1]);
 		for ($i = 0; $i < (8 - $limit); $i++)
 			array_push($missing, '0000');
@@ -369,7 +383,7 @@ function ob_sessrewrite($buffer)
 	if (!empty($modSettings['queryless_urls']) && (!$context['server']['is_cgi'] || ini_get('cgi.fix_pathinfo') == 1 || @get_cfg_var('cgi.fix_pathinfo') == 1) && ($context['server']['is_apache'] || $context['server']['is_lighttpd'] || $context['server']['is_litespeed']))
 	{
 		// Let's do something special for session ids!
-		$buffer = preg_replace_callback('~"' . preg_quote($scripturl, '/') . '\?((?:board|topic)=[^#"]+?)(#[^"]*?)?"~', 'buffer_callback', $buffer);
+		$buffer = preg_replace_callback('~"' . preg_quote($scripturl, '~') . '\?((?:board|topic)=[^#"]+?)(#[^"]*?)?"~', 'buffer_callback', $buffer);
 	}
 
 	// Return the changed buffer.

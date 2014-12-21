@@ -14,7 +14,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -121,7 +121,7 @@ class Groups_Controller extends Action_Controller
 						'value' => $txt['name'],
 					),
 					'data' => array(
-						'function' => function ($rowData) {
+						'function' => function ($rowData) use ($base_url) {
 							global $scripturl;
 
 							// Since the moderator group has no explicit members, no link is needed.

@@ -9,7 +9,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  * This file contains javascript utility functions
  */
@@ -107,32 +107,61 @@ function sendXMLDocument(sUrl, sContent, funcCallback)
  * php_unhtmlspecialchars, php_addslashes, removeEntities, easyReplace
  */
 
-// A property we'll be needing for php_to8bit.
-String.prototype.oCharsetConversion = {
-	from: '',
-	to: ''
-};
-
 /**
- * Convert a UTF8 string to an 8 bit representation (like in PHP).
+ * Convert a UTF8 string to an 8 bit representation
+ *
+ * - Simulate php utf8_encode function
+ * - Surrogate handling leveraged from php.js which is licensed under the MIT licenses.
  */
-String.prototype.php_to8bit = function ()
-{
-	var n,
-		sReturn = '';
+String.prototype.php_to8bit = function () {
+	var sReturn = '',
+		iStart = 0,
+		iEnd = 0,
+		iTextLen = this.length;
 
-	for (var i = 0, iTextLen = this.length; i < iTextLen; i++)
+	for (var i = 0; i < iTextLen; i++)
 	{
-		n = this.charCodeAt(i);
-		if (n < 128)
-			sReturn += String.fromCharCode(n);
-		else if (n < 2048)
-			sReturn += String.fromCharCode(192 | n >> 6) + String.fromCharCode(128 | n & 63);
-		else if (n < 65536)
-			sReturn += String.fromCharCode(224 | n >> 12) + String.fromCharCode(128 | n >> 6 & 63) + String.fromCharCode(128 | n & 63);
+		// Character code (UTF 16)
+		var cc = this.charCodeAt(i),
+			sUtf8enc = null;
+
+		// Simple Ascii
+		if (cc < 128)
+			iEnd++;
+		// Simple two Byte
+		else if (cc < 2048)
+			sUtf8enc = String.fromCharCode((192 | cc >> 6), (128 | cc & 63));
+		// Simple three Byte if not a surrogate pair
+		else if ((cc & 0xF800) !== 0xD800)
+			sUtf8enc = String.fromCharCode((224 | cc >> 12), (128 | cc >> 6 & 63), (128 | cc & 63));
 		else
-			sReturn += String.fromCharCode(240 | n >> 18) + String.fromCharCode(128 | n >> 12 & 63) + String.fromCharCode(128 | n >> 6 & 63) + String.fromCharCode(128 | n & 63);
+		{
+			// Character code for the next Byte
+			var cc2 = this.charCodeAt(++i);
+
+			// Valid surrogate pairs must have matched lead and trail
+			if ((cc & 0xFC00) !== 0xD800 || (cc2 & 0xFC00) !== 0xDC00)
+				sUtf8enc = String.fromCharCode((224 | 65533 >> 12), (128 | 65533 >> 6 & 63), (128 | 65533 & 63));
+			else
+			{
+				cc = ((cc & 0x3FF) << 10) + (cc2 & 0x3FF) + 0x10000;
+				sUtf8enc = String.fromCharCode(240 | cc >> 18, (128 | cc >> 12 & 63), (128 | cc >> 6 & 63), (128 | cc & 63));
+			}
+		}
+
+		// Had to encode the character?
+		if (sUtf8enc !== null)
+		{
+			if (iEnd > iStart)
+				sReturn += this.slice(iStart, iEnd);
+
+			sReturn += sUtf8enc;
+			iStart = iEnd = i + 1;
+		}
 	}
+
+	if (iEnd > iStart)
+		sReturn += this.slice(iStart, iTextLen);
 
 	return sReturn;
 };
@@ -273,7 +302,7 @@ function reqWin(desktopURL, alternateWidth, alternateHeight, noScrollbars)
 function reqOverlayDiv(desktopURL, sHeader, sIcon)
 {
 	// Set up our div details
-	var sAjax_indicator = '<div class="centertext"><i class="fa fa-spinner fa-spin fa-2x" alt="loading"></i></div>';
+	var sAjax_indicator = '<div class="centertext"><i class="fa fa-spinner fa-spin fa-2x"></i></div>';
 
 	sIcon = elk_images_url + '/' + (typeof(sIcon) === 'string' ? sIcon : 'helptopics.png');
 	sHeader = typeof(sHeader) === 'string' ? sHeader : help_popup_heading_text;
@@ -576,59 +605,11 @@ window.setTimeout(function() {elk_sessionKeepAlive();}, 1200000);
  */
 function elk_setThemeOption(option, value, theme, additional_vars)
 {
-	if (additional_vars === null)
+	if (additional_vars === null || typeof(additional_vars) === 'undefined')
 		additional_vars = '';
 
 	var tempImage = new Image();
 	tempImage.src = elk_prepareScriptUrl(elk_scripturl) + 'action=jsoption;var=' + option + ';val=' + value + ';' + elk_session_var + '=' + elk_session_id + additional_vars + (theme === null ? '' : '&th=' + theme) + ';time=' + (new Date().getTime());
-}
-
-/**
- * Resize an avatar with JS
- */
-function elk_avatarResize()
-{
-	var possibleAvatars = document.getElementsByTagName('img');
-
-	for (var i = 0; i < possibleAvatars.length; i++)
-	{
-		var tempAvatars = [],
-			j = 0;
-
-		if (possibleAvatars[i].className !== 'avatar')
-			continue;
-
-		// Image.prototype.avatar = possibleAvatars[i];
-		tempAvatars[j] = new Image();
-		tempAvatars[j].avatar = possibleAvatars[i];
-
-		tempAvatars[j].onload = function()
-		{
-			this.avatar.width = this.width;
-			this.avatar.height = this.height;
-
-			if (elk_avatarMaxWidth !== 0 && this.width > elk_avatarMaxWidth)
-			{
-				this.avatar.height = (elk_avatarMaxWidth * this.height) / this.width;
-				this.avatar.width = elk_avatarMaxWidth;
-			}
-
-			if (elk_avatarMaxHeight !== 0 && this.avatar.height > elk_avatarMaxHeight)
-			{
-				this.avatar.width = (elk_avatarMaxHeight * this.avatar.width) / this.avatar.height;
-				this.avatar.height = elk_avatarMaxHeight;
-			}
-		};
-
-		tempAvatars[j].src = possibleAvatars[i].src;
-		j++;
-	}
-
-	if (typeof(window_oldAvatarOnload) !== 'undefined' && window_oldAvatarOnload)
-	{
-		window_oldAvatarOnload();
-		window_oldAvatarOnload = null;
-	}
 }
 
 /**
@@ -1158,6 +1139,14 @@ function JumpTo(oJumpToOptions)
 	this.showSelect();
 }
 
+// Remove all the options in the select. Method of the JumpTo class.
+JumpTo.prototype.removeAll = function ()
+{
+//	var dropdownList = document.getElementById(this.opt.sContainerId + '_select');
+for (var i = this.dropdownList.options.length; i > 0; i--)
+		this.dropdownList.remove(i - 1);
+}
+
 // Show the initial select box (onload). Method of the JumpTo class.
 JumpTo.prototype.showSelect = function ()
 {
@@ -1176,13 +1165,11 @@ JumpTo.prototype.showSelect = function ()
 // Fill the jump to box with entries. Method of the JumpTo class.
 JumpTo.prototype.fillSelect = function (aBoardsAndCategories)
 {
+	this.removeAll();
 	if ('onbeforeactivate' in document)
 		this.dropdownList.onbeforeactivate = null;
 	else
 		this.dropdownList.onfocus = null;
-
-	if (this.opt.bNoRedirect)
-		this.dropdownList.options[0].disabled = 'disabled';
 
 	// Create a document fragment that'll allowing inserting big parts at once.
 	var oListFragment = document.createDocumentFragment(),
@@ -1195,13 +1182,6 @@ JumpTo.prototype.fillSelect = function (aBoardsAndCategories)
 			sChildLevelPrefix = '',
 			oOption,
 			oText;
-
-		// If we've reached the currently selected board add all items so far.
-		if (!aBoardsAndCategories[i].isCategory && aBoardsAndCategories[i].id === this.opt.iCurBoardId)
-		{
-				this.dropdownList.insertBefore(oOptgroupFragment, this.dropdownList.options[0]);
-				continue;
-		}
 
 		if (aBoardsAndCategories[i].isCategory)
 		{
@@ -1226,6 +1206,9 @@ JumpTo.prototype.fillSelect = function (aBoardsAndCategories)
 		// Applying a category class to this option?
 		if (aBoardsAndCategories[i].isCategory && this.opt.sCatClass)
 			oOption.className = this.opt.sCatClass;
+
+		if (!aBoardsAndCategories[i].isCategory && aBoardsAndCategories[i].id === this.opt.iCurBoardId)
+			oOption.selected = 'selected';
 
 		oOption.appendChild(oText);
 
@@ -1537,35 +1520,26 @@ function elkSelectText(oCurElement, bActOnElement)
 	else
 		oCodeArea = oCurElement.parentNode.nextSibling;
 
+	// Did not find it, bail
 	if (typeof(oCodeArea) !== 'object' || oCodeArea === null)
 		return false;
 
-	// Start off with my favourite, internet explorer.
+	// Start off with internet explorer < 9.
 	if ('createTextRange' in document.body)
 	{
 		var oCurRange = document.body.createTextRange();
 		oCurRange.moveToElementText(oCodeArea);
 		oCurRange.select();
 	}
-	// Firefox at el.
+	// All the rest
 	else if (window.getSelection)
 	{
-		var oCurSelection = window.getSelection();
-
-		// Safari is special!
-		if (oCurSelection.setBaseAndExtent)
-		{
-			var oLastChild = oCodeArea.lastChild;
-			oCurSelection.setBaseAndExtent(oCodeArea, 0, oLastChild, 'innerText' in oLastChild ? oLastChild.innerText.length : oLastChild.textContent.length);
-		}
-		else
-		{
-			var curRange = document.createRange();
+		var oCurSelection = window.getSelection(),
+			curRange = document.createRange();
 
 			curRange.selectNodeContents(oCodeArea);
 			oCurSelection.removeAllRanges();
 			oCurSelection.addRange(curRange);
-		}
 	}
 
 	return false;
@@ -1762,7 +1736,7 @@ function initHighlightSelection(container_id)
 /**
  * Auto submits a paused form, such as a maintenance task
  */
-function doAutoSubmit()
+function doAutoSubmit(countdown, txt_message, formName)
 {
 	var formID = typeof(formName) !== 'undefined' ? formName : "autoSubmit";
 
@@ -1774,5 +1748,5 @@ function doAutoSubmit()
 	document.forms[formID].cont.value = txt_message + ' (' + countdown + ')';
 	countdown--;
 
-	setTimeout(function() {doAutoSubmit();}, 1000);
+	setTimeout(function() {doAutoSubmit(countdown, txt_message, formID);}, 1000);
 }

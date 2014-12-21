@@ -14,7 +14,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -417,13 +417,8 @@ function is_not_banned($forceCheck = false)
 	elseif (isset($_SESSION['ban']['cannot_login']) && !$user_info['is_guest'])
 	{
 		// We don't wanna see you!
-		$db->query('', '
-			DELETE FROM {db_prefix}log_online
-			WHERE id_member = {int:current_member}',
-			array(
-				'current_member' => $user_info['id'],
-			)
-		);
+		require_once(SUBSDIR . '/Logging.subs.php');
+		deleteMemberLogOnline();
 
 		// 'Log' the user out.  Can't have any funny business... (save the name!)
 		$old_name = isset($user_info['name']) && $user_info['name'] != '' ? $user_info['name'] : $txt['guest_title'];

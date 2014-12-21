@@ -11,7 +11,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -53,7 +53,7 @@ function template_poll_edit()
 							<ul class="poll_main">';
 
 	// Loop through all the choices and print them out.
-	foreach ($context['choices'] as $choice)
+	foreach ($context['poll']['choices'] as $choice)
 	{
 		echo '
 								<li>

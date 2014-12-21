@@ -11,37 +11,22 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
 // Version information...
-define('CURRENT_VERSION', '1.0 RC 1');
+define('CURRENT_VERSION', '1.0.2');
 define('CURRENT_LANG_VERSION', '1.0');
 define('REQUIRED_PHP_VERSION', '5.2.0');
 
-$databases = array(
-	'mysql' => array(
-		'name' => 'MySQL',
-		'version' => '5.0.19',
-		'version_check' => 'return min(mysqli_get_server_info($db_connection), mysqli_get_client_info($db_connection));',
-		'utf8_support' => true,
-		'utf8_version' => '4.1.0',
-		'utf8_version_check' => 'return mysqli_get_server_info($db_connection);',
-		'alter_support' => true,
-	),
-	'postgresql' => array(
-		'name' => 'PostgreSQL',
-		'version' => '8.3',
-		'utf8_support' => true,
-		'version_check' => '$version = pg_version(); return $version[\'client\'];',
-		'always_has_db' => true,
-	),
-);
+// Database info.
+$databases = array();
+load_possible_databases();
 
 // General options for the script.
 $timeLimitThreshold = 3;
-$upgrade_path = dirname(__FILE__);
+$upgrade_path = realpath(dirname(__FILE__) . '/..');
 $upgradeurl = $_SERVER['PHP_SELF'];
 
 // Where the images etc are kept.
@@ -83,6 +68,8 @@ if (!empty($_SERVER['argv']) && php_sapi_name() == 'cli' && empty($_SERVER['REMO
 	}
 }
 
+define('TMP_BOARDDIR', $upgrade_path);
+
 // Are we from the client?
 if (php_sapi_name() == 'cli' && empty($_SERVER['REMOTE_ADDR']))
 {
@@ -93,15 +80,15 @@ else
 	$command_line = false;
 
 // Load this now just because we can.
-require_once($upgrade_path . '/Settings.php');
+require_once(TMP_BOARDDIR . '/Settings.php');
 
 // Fix for using the current directory as a path.
 if (substr($sourcedir, 0, 1) == '.' && substr($sourcedir, 1, 1) != '.')
-	$sourcedir = dirname(__FILE__) . substr($sourcedir, 1);
+	$sourcedir = TMP_BOARDDIR . substr($sourcedir, 1);
 
 // Make sure the paths are correct... at least try to fix them.
-if (!file_exists($boarddir) && file_exists(dirname(__FILE__) . '/agreement.txt'))
-	$boarddir = dirname(__FILE__);
+if (!file_exists($boarddir) && file_exists(TMP_BOARDDIR . '/agreement.txt'))
+	$boarddir = TMP_BOARDDIR;
 
 if (!file_exists($sourcedir) && file_exists($boarddir . '/sources'))
 	$sourcedir = $boarddir . '/sources';
@@ -492,6 +479,8 @@ function loadEssentialData()
 		require_once(SUBSDIR . '/Util.class.php');
 		require_once(SOURCEDIR . '/Subs.php');
 		require_once(SOURCEDIR . '/QueryString.php');
+
+		spl_autoload_register('elk_autoloader');
 		cleanRequest();
 	}
 
@@ -579,7 +568,7 @@ function action_welcomeLogin()
 		return throw_error('The upgrader was unable to find some crucial files.<br /><br />Please make sure you uploaded all of the files included in the package, including the themes, sources, and other directories.');
 
 	// Do they meet the install requirements?
-	if (version_compare(REQUIRED_PHP_VERSION, PHP_VERSION, '>='))
+	if (version_compare(REQUIRED_PHP_VERSION, PHP_VERSION, '>'))
 		return throw_error('Warning!  You do not appear to have a version of PHP installed on your webserver that meets ElkArte\'s minimum installations requirements.<br /><br />Please ask your host to upgrade.');
 
 	if (!db_version_check())
@@ -592,7 +581,7 @@ function action_welcomeLogin()
 	// Do a quick version spot check.
 	$temp = substr(@implode('', @file(BOARDDIR . '/index.php')), 0, 4096);
 	preg_match('~\*\s@version\s+(.+)[\s]{2}~i', $temp, $match);
-	if (empty($match[1]) || trim($match[1]) != CURRENT_VERSION)
+	if (empty($match[1]) || trim(str_replace('Release Candidate', 'RC', $match[1])) != CURRENT_VERSION)
 		return throw_error('The upgrader found some old or outdated files.<br /><br />Please make certain you uploaded the new versions of all the files included in the package.');
 
 	// What absolutely needs to be writable?
@@ -642,9 +631,9 @@ function action_welcomeLogin()
 	}
 
 	// We're going to check that their board dir setting is right in case they've been moving stuff around.
-	if (strtr(BOARDDIR, array('/' => '', '\\' => '')) != strtr(dirname(__FILE__), array('/' => '', '\\' => '')))
+	if (strtr(BOARDDIR, array('/' => '', '\\' => '')) != strtr(TMP_BOARDDIR, array('/' => '', '\\' => '')))
 		$upcontext['warning'] = '
-			It looks as if your board directory settings <em>might</em> be incorrect. Your board directory is currently set to &quot;' . BOARDDIR . '&quot; but should probably be &quot;' . dirname(__FILE__) . '&quot;. Settings.php currently lists your paths as:<br />
+			It looks as if your board directory settings <em>might</em> be incorrect. Your board directory is currently set to &quot;' . BOARDDIR . '&quot; but should probably be &quot;' . TMP_BOARDDIR . '&quot;. Settings.php currently lists your paths as:<br />
 			<ul>
 				<li>Board Directory: ' . BOARDDIR . '</li>
 				<li>Source Directory: ' . BOARDDIR . '</li>
@@ -1281,20 +1270,6 @@ function action_deleteUpgrade()
 	// Can we delete the file?
 	$upcontext['can_delete_script'] = is_writable(dirname(__FILE__)) || is_writable(__FILE__);
 
-	// Now is the perfect time to fetch the ELK files.
-	if ($command_line)
-		cli_scheduled_fetchFiles();
-	else
-	{
-		// The variable is usually defined in index.php so lets just use the constant to do it for us.
-		$forum_version = CURRENT_VERSION;
-
-		// Now go get those files!
-		require_once(SUBSDIR . '/ScheduledTask.class.php');
-		$task = new Scheduled_Task();
-		$task->fetchFiles();
-	}
-
 	// Log what we've done.
 	if (empty($user_info['id']))
 		$user_info['id'] = !empty($upcontext['user']['id']) ? $upcontext['user']['id'] : 0;
@@ -1343,68 +1318,6 @@ function action_deleteUpgrade()
 	$_GET['substep'] = 0;
 
 	return false;
-}
-
-/**
- * Just like the built in one, but setup for CLI to not use themes.
- */
-function cli_scheduled_fetchFiles()
-{
-	global $language, $forum_version, $modSettings;
-
-	$db = database();
-
-	if (empty($modSettings['time_format']))
-		$modSettings['time_format'] = '%B %d, %Y, %I:%M:%S %p';
-
-	// What files do we want to get
-	$request = $db->query('', '
-		SELECT id_file, filename, path, parameters
-		FROM {db_prefix}admin_info_files',
-		array(
-		)
-	);
-
-	$js_files = array();
-	while ($row = $db->fetch_assoc($request))
-	{
-		$js_files[$row['id_file']] = array(
-			'filename' => $row['filename'],
-			'path' => $row['path'],
-			'parameters' => sprintf($row['parameters'], $language, urlencode($modSettings['time_format']), urlencode($forum_version)),
-		);
-	}
-	$db->free_result($request);
-
-	// We're gonna need fetch_web_data() to pull this off.
-	require_once(SUBSDIR . '/Package.subs.php');
-
-	foreach ($js_files as $ID_FILE => $file)
-	{
-		// Create the url
-		$server = empty($file['path']) || substr($file['path'], 0, 7) != 'http://' ? 'http://www.elkarte.net' : '';
-		$url = $server . (!empty($file['path']) ? $file['path'] : $file['path']) . $file['filename'] . (!empty($file['parameters']) ? '?' . $file['parameters'] : '');
-
-		// Get the file
-		$file_data = fetch_web_data($url);
-
-		// If we got an error - give up - the site might be down.
-		if ($file_data === false)
-			return throw_error(sprintf('Could not retrieve the file %1$s.', $url));
-
-		// Save the file to the database.
-		$db->query('substring', '
-			UPDATE {db_prefix}admin_info_files
-			SET data = SUBSTRING({string:file_data}, 1, 65534)
-			WHERE id_file = {int:id_file}',
-			array(
-				'id_file' => $ID_FILE,
-				'file_data' => $file_data,
-			)
-		);
-	}
-
-	return true;
 }
 
 function convertSettingsToTheme()
@@ -1577,7 +1490,7 @@ function changeSettings($config_vars)
 function updateLastError()
 {
 	// Clear out the db_last_error file
-	file_put_contents(dirname(__FILE__) . '/db_last_error.php', '<' . '?' . "php\n" . '$db_last_error = 0;');
+	file_put_contents(TMP_BOARDDIR . '/db_last_error.txt', '0');
 }
 
 /**
@@ -1680,6 +1593,8 @@ function parse_sql($filename)
 */
 
 	$db = database();
+	$db_table = db_table();
+	$db->skip_error();
 
 	// Our custom error handler - does nothing but does stop public errors from XML!
 	if (!function_exists('sql_error_handler'))
@@ -2699,7 +2614,7 @@ function makeFilesWritable(&$files)
 			elseif ($ftp->error !== false && !isset($upcontext['chmod']['ftp_error']))
 				$upcontext['chmod']['ftp_error'] = $ftp->last_message === null ? '' : $ftp->last_message;
 
-			list ($username, $detect_path, $found_path) = $ftp->detect_path(dirname(__FILE__));
+			list ($username, $detect_path, $found_path) = $ftp->detect_path(TMP_BOARDDIR);
 
 			if ($found_path || !isset($upcontext['chmod']['path']))
 				$upcontext['chmod']['path'] = $detect_path;

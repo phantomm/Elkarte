@@ -14,7 +14,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
@@ -154,11 +154,11 @@ function create_control_richedit($editorOptions)
 		// JS makes the editor go round
 		loadJavascriptFile(array('jquery.sceditor.min.js', 'jquery.sceditor.bbcode.min.js', 'jquery.sceditor.elkarte.js', 'post.js', 'splittag.plugin.js', 'dropAttachments.js'));
 		addJavascriptVar(array(
-			'post_box_name' => '"' . $editorOptions['id'] . '"',
-			'elk_smileys_url' => '"' . $settings['smileys_url'] . '"',
-			'bbc_quote_from' => '"' . addcslashes($txt['quote_from'], "'") . '"',
-			'bbc_quote' => '"' . addcslashes($txt['quote'], "'") . '"',
-			'bbc_search_on' => '"' . addcslashes($txt['search_on'], "'") . '"')
+			'post_box_name' => $editorOptions['id'],
+			'elk_smileys_url' => $settings['smileys_url'],
+			'bbc_quote_from' => $txt['quote_from'],
+			'bbc_quote' => $txt['quote'],
+			'bbc_search_on' => $txt['search_on']), true
 		);
 
 		// Editor language file
@@ -174,7 +174,7 @@ function create_control_richedit($editorOptions)
 			loadJavascriptFile(array('jquery.atwho.js', 'jquery.caret.min.js', 'mentioning.plugin.js'));
 
 		// Our not so concise shortcut line
-		$context['shortcuts_text'] = $txt['shortcuts' . (!empty($context['drafts_save']) ? '_drafts' : '') . (isBrowser('is_firefox') ? '_firefox' : '')];
+		$context['shortcuts_text'] = $txt['shortcuts' . (!empty($context['drafts_save']) || !empty($context['drafts_pm_save']) ? '_drafts' : '') . (isBrowser('is_firefox') ? '_firefox' : '')];
 
 		// Spellcheck?
 		$context['show_spellchecking'] = !empty($modSettings['enableSpellChecking']) && function_exists('pspell_new');
@@ -208,6 +208,9 @@ function create_control_richedit($editorOptions)
 		'locale' => !empty($txt['lang_locale']) ? $txt['lang_locale'] : 'en_US',
 	);
 
+	// Allow addons an easy way to add plugins, initialization objects, etc to the editor control
+	call_integration_hook('integrate_editor_plugins', array($editorOptions['id']));
+
 	// Switch between default images and back... mostly in case you don't have an PersonalMessage template, but do have a Post template.
 	if (isset($settings['use_default_images']) && $settings['use_default_images'] == 'defaults' && isset($settings['default_template']))
 	{
@@ -236,7 +239,7 @@ function create_control_richedit($editorOptions)
 		$bbc_tags['row2'] = array(
 			array('quote', 'code', 'table'),
 			array('bulletlist', 'orderedlist', 'horizontalrule'),
-			array('spoiler', 'footnote'),
+			array('spoiler', 'footnote', 'splittag'),
 			array('image', 'link', 'email'),
 		);
 
@@ -431,12 +434,17 @@ function create_control_richedit($editorOptions)
 
 				foreach ($context['smileys'] as $section => $smileyRows)
 				{
+					$last_row = null;
 					foreach ($smileyRows as $rowIndex => $smileys)
+					{
 						$context['smileys'][$section][$rowIndex]['smileys'][count($smileys['smileys']) - 1]['isLast'] = true;
+						$last_row = $rowIndex;
+					}
 
-					if (!empty($smileyRows))
-						$context['smileys'][$section][count($smileyRows) - 1]['isLast'] = true;
+					if ($last_row !== null)
+						$context['smileys'][$section][$last_row]['isLast'] = true;
 				}
+
 
 				cache_put_data('posting_smileys', $context['smileys'], 480);
 			}

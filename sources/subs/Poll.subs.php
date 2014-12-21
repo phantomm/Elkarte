@@ -8,7 +8,7 @@
  * @copyright ElkArte Forum contributors
  * @license   BSD http://opensource.org/licenses/BSD-3-Clause
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  * This file contains functions for dealing with polls.
  *
@@ -27,36 +27,16 @@
  */
 function associatedPoll($topicID, $pollID = null)
 {
-	$db = database();
-
+	// Retrieve the poll ID.
 	if ($pollID === null)
 	{
-		// Retrieve the poll ID.
-		$request = $db->query('', '
-			SELECT id_poll
-			FROM {db_prefix}topics
-			WHERE id_topic = {int:current_topic}
-			LIMIT 1',
-			array(
-				'current_topic' => $topicID,
-			)
-		);
-		list ($pollID) = $db->fetch_row($request);
-		$db->free_result($request);
+		$pollID = topicAttribute($topicID, array('id_poll'));
 
-		return $pollID;
+		return $pollID['id_poll'];
 	}
 	else
 	{
-		$db->query('', '
-			UPDATE {db_prefix}topics
-			SET id_poll = {int:poll}
-			WHERE id_topic = {int:current_topic}',
-			array(
-				'current_topic' => $topicID,
-				'poll' => $pollID,
-			)
-		);
+		setTopicAttribute($topicID, array('id_poll' => $pollID));
 	}
 }
 

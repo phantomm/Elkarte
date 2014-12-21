@@ -11,7 +11,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -145,8 +145,7 @@ function template_list_boards($boards, $id)
 					</div>
 					<div class="board_latest">
 						<p class="board_stats">
-							', comma_format($board['posts']), ' ', $board['is_redirect'] ? $txt['redirects'] : $txt['posts'], '
-							', $board['is_redirect'] ? '' : '<br /> ' . comma_format($board['topics']) . ' ' . $txt['board_topics'], '
+							', comma_format($board['posts']), ' ', $board['is_redirect'] ? $txt['redirects'] : $txt['posts'], $board['is_redirect'] ? '' : '<br /> ' . comma_format($board['topics']) . ' ' . $txt['board_topics'], '
 						</p>';
 
 		// @todo - Last post message still needs some work. Probably split the language string into three chunks.
@@ -160,7 +159,7 @@ function template_list_boards($boards, $id)
 
 			if (!empty($settings['avatars_on_indexes']))
 				echo '
-							<span class="board_avatar"><a href="', $board['last_post']['member']['href'], '">', $board['last_post']['member']['avatar']['image'], '</a></span>';
+							<span class="board_avatar"><a href="', $board['last_post']['member']['href'], '"><img class="avatar" src="', $board['last_post']['member']['avatar']['href'], '" alt="" /></a></span>';
 			echo '
 							', $board['last_post']['last_post_message'], '
 						</p>';

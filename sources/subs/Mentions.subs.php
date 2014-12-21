@@ -7,7 +7,7 @@
  * @copyright ElkArte Forum contributors
  * @license   BSD http://opensource.org/licenses/BSD-3-Clause
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -51,8 +51,11 @@ function countUserMentions($all = false, $type = '', $id_member = null)
 	$db->free_result($request);
 
 	// Counts as maintenance! :P
-	if ($all === true && empty($type))
-		updateMemberdata($id_member, array('mentions' => $counts[$id_member]));
+	if ($all === false && empty($type))
+	{
+		require_once(SUBSDIR . '/Members.subs.php');
+		updateMemberData($id_member, array('mentions' => $counts[$id_member]));
+	}
 
 	return $counts[$id_member];
 }

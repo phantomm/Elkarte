@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
@@ -174,9 +174,9 @@ class Admin_Controller extends Action_Controller
 							'pmsettings' => array($txt['personal_messages']),
 							'karma' => array($txt['karma'], 'enabled' => in_array('k', $context['admin_features'])),
 							'likes' => array($txt['likes'], 'enabled' => in_array('l', $context['admin_features'])),
+							'mention' => array($txt['mention']),
 							'sig' => array($txt['signature_settings_short']),
 							'profile' => array($txt['custom_profile_shorttitle'], 'enabled' => in_array('cp', $context['admin_features'])),
-							'mention' => array($txt['mention']),
 						),
 					),
 					'serversettings' => array(
@@ -537,10 +537,7 @@ class Admin_Controller extends Action_Controller
 		// Any files to include for administration?
 		call_integration_include_hook('integrate_admin_include');
 
-		$menuOptions = array('default_include_dir' => ADMINDIR);
-
-		// Let them add Admin areas easily.
-		call_integration_hook('integrate_admin_areas', array(&$admin_areas, &$menuOptions));
+		$menuOptions = array('hook' => 'admin', 'default_include_dir' => ADMINDIR);
 
 		// Actually create the menu!
 		$admin_include_data = createMenu($admin_areas, $menuOptions);
@@ -623,10 +620,11 @@ class Admin_Controller extends Action_Controller
 			'db_server',
 			'mmcache',
 			'eaccelerator',
-			'phpa',
+			'zend',
 			'apc',
 			'memcache',
 			'xcache',
+			'opcache',
 			'php',
 			'server',
 		);
@@ -657,7 +655,7 @@ class Admin_Controller extends Action_Controller
 	 */
 	public function action_credits()
 	{
-		global $forum_version, $txt, $scripturl, $context, $user_info;
+		global $forum_version, $txt, $scripturl, $context, $user_info, $modSettings;
 
 		// We need a little help from our friends
 		require_once(SUBSDIR . '/Membergroups.subs.php');
@@ -694,10 +692,11 @@ class Admin_Controller extends Action_Controller
 			'db_server',
 			'mmcache',
 			'eaccelerator',
-			'phpa',
+			'zend',
 			'apc',
 			'memcache',
 			'xcache',
+			'opcache',
 			'php',
 			'server',
 		);
@@ -709,6 +708,15 @@ class Admin_Controller extends Action_Controller
 
 		// Load in the admin quick tasks
 		$context['quick_admin_tasks'] = getQuickAdminTasks();
+
+		$index = 'new_in_' . str_replace(array('ElkArte ', '.'), array('', '_'), FORUM_VERSION);
+		if (!empty($modSettings[$index]) && isset($txt[$index]))
+		{
+			$context['latest_updates'] = replaceBasicActionUrl($txt[$index]);
+			require_once(SUBSDIR . '/Themes.subs.php');
+
+			updateThemeOptions(array(1, $user_info['id'], 'dismissed_' . $index, 1));
+		}
 	}
 
 	/**
@@ -725,7 +733,9 @@ class Admin_Controller extends Action_Controller
 			'member' => array($this, 'action_search_member', 'permission' => 'admin_forum'),
 		);
 
-		$subAction = !isset($_REQUEST['search_type']) || !isset($subActions[$_REQUEST['search_type']]) ? 'internal' : $_REQUEST['search_type'];
+		// Set the subaction
+		$action = new Action();
+		$subAction = $action->initialize($subActions, 'internal');
 
 		// Keep track of what the admin wants in terms of advanced or not
 		if (empty($context['admin_preferences']['sb']) || $context['admin_preferences']['sb'] != $subAction)
@@ -747,11 +757,7 @@ class Admin_Controller extends Action_Controller
 		if (trim($context['search_term']) == '')
 			$context['search_results'] = array();
 		else
-		{
-			$action = new Action();
-			$subAction = $action->initialize($subActions, 'internal');
 			$action->dispatch($subAction);
-		}
 	}
 
 	/**

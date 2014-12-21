@@ -11,7 +11,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -155,16 +155,18 @@ function template_memberlist()
 
 			$alternate = !$alternate;
 		}
+
+		echo '
+			</ul>
+		</div>';
 	}
 	// No members?
 	else
 		echo '
-				<li>
-					<div class="standard_row">', $txt['search_no_results'], '</div>
-				</li>';
-
-	echo '
 			</ul>
+		</div>
+		<div class="infobox">
+			', $txt['search_no_results'], '
 		</div>';
 }
 

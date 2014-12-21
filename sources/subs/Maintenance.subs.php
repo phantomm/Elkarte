@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 if (!defined('ELK'))
@@ -276,15 +276,8 @@ function recountApprovedMessages($start, $increment)
 		)
 	);
 	while ($row = $db->fetch_assoc($request))
-		$db->query('', '
-			UPDATE {db_prefix}topics
-			SET num_replies = {int:num_replies}
-			WHERE id_topic = {int:id_topic}',
-			array(
-				'num_replies' => $row['real_num_replies'],
-				'id_topic' => $row['id_topic'],
-			)
-		);
+		setTopicAttribute($row['id_topic'], array('num_replies' => $row['real_num_replies']));
+
 	$db->free_result($request);
 }
 
@@ -316,15 +309,8 @@ function recountUnapprovedMessages($start, $increment)
 		)
 	);
 	while ($row = $db->fetch_assoc($request))
-		$db->query('', '
-			UPDATE {db_prefix}topics
-			SET unapproved_posts = {int:unapproved_posts}
-			WHERE id_topic = {int:id_topic}',
-			array(
-				'unapproved_posts' => $row['real_unapproved_posts'],
-				'id_topic' => $row['id_topic'],
-			)
-		);
+		setTopicAttribute($row['id_topic'], array('unapproved_posts' => $row['real_unapproved_posts']));
+
 	$db->free_result($request);
 }
 
@@ -883,7 +869,7 @@ function purgeMembers($type, $groups, $time_limit)
 		$where_vars['blank_add_groups'] = '';
 	}
 
-	// Select all the members we're about to murder/remove...
+	// Select all the members we're about to remove...
 	$request = $db->query('', '
 		SELECT mem.id_member, IFNULL(m.id_member, 0) AS is_mod
 		FROM {db_prefix}members AS mem

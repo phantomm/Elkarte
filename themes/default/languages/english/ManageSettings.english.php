@@ -56,6 +56,7 @@ $txt['admin_session_lifetime'] = 'Number of minutes an admin session stays activ
 $txt['auto_admin_session'] = 'Automatically start an admin session on logon';
 $txt['securityDisable'] = 'Disable administration security';
 $txt['securityDisable_moderate'] = 'Disable moderation security';
+$txt['enableOTP'] = 'Enable two factor authentication (one time passwords)';
 $txt['send_validation_onChange'] = 'Require reactivation after email change';
 $txt['approveAccountDeletion'] = 'Require admin approval when member deletes account';
 $txt['autoOptMaxOnline'] = 'Maximum users online when optimizing';
@@ -123,17 +124,9 @@ $txt['likeAllowSelf'] = 'Allow members to like their own posts';
 $txt['likeDisplayLimit'] = 'Set the maximum number of "liked by" names to display in the topic view, 0 for no limit, -1 to disable';
 
 $txt['caching_information'] = 'ElkArte supports caching through the use of accelerators. The currently supported accelerators include:
-<ul class="normallist">
-	<li>APC</li>
-	<li>eAccelerator</li>
-	<li>Turck MMCache</li>
-	<li>Memcached</li>
-	<li>Zend Platform/Performance Suite (Not Zend Optimizer)</li>
-	<li>XCache</li>
-</ul>
+<ul class="normallist">{supported_accelerators}</ul>
 Caching will work best if you have PHP compiled with one of the above optimizers, or have memcache available. If you do not have any optimizer installed file based caching will be used.';
-$txt['detected_no_caching'] = '<strong class="alert">Unable to detect a compatible accelerator on your server.  File based caching can be used instead.</strong>';
-$txt['detected_accelerators'] = '<strong class="success">The following accelerators have been detected: %1$s</strong>';
+$txt['detected_accelerators'] = 'The following accelerators have been detected: <strong class="success">%1$s</strong>';
 
 $txt['cache_enable'] = 'Caching Level';
 $txt['cache_off'] = 'No caching';
@@ -151,6 +144,7 @@ $txt['mmcache_cache'] = 'Turck MMCache';
 $txt['memcached_cache'] = 'Memcached';
 $txt['zend_cache'] = 'Zend Platform/Performance Suite';
 $txt['xcache_cache'] = 'XCache';
+$txt['cache_conflict'] = 'You are using PHP\'s opcache with ElkArte\'s file based caching.  For best results you should blacklist ElkArte\'s cache directory (' . CACHEDIR . '/*) using the opcache.blacklist_filename directive.';
 
 $txt['loadavg_warning'] = '<span class="error">Please note: the settings below are to be edited with care. Setting any of them too low may render your forum <strong>unusable</strong>! The current load average is <strong>%01.2f</strong></span>';
 $txt['loadavg_enable'] = 'Enable load balancing by load averages';

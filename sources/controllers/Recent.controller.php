@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
@@ -192,6 +192,7 @@ class Recent_Controller extends Action_Controller
 				'delete_any' => 'can_delete',
 			)
 		);
+
 		$context['posts'] = $this->_grabber->getRecentPosts($start, $permissions);
 
 		$quote_enabled = empty($modSettings['disabledBBC']) || !in_array('quote', explode(',', $modSettings['disabledBBC']));

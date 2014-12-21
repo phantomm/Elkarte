@@ -12,7 +12,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -40,7 +40,7 @@ class DbTable_PostgreSQL extends DbTable
 	 * Array of table names we don't allow to be removed by addons.
 	 * @var array
 	 */
-	private $_reservedTables = null;
+	protected $_reservedTables = null;
 
 	/**
 	 * Keeps a (reverse) log of changes to the table structure, to be undone.
@@ -555,9 +555,9 @@ class DbTable_PostgreSQL extends DbTable
 			return false;
 
 		// MySQL supports a length argument, postgre no
-		foreach ($index['columns'] as $id => $col)
+		foreach ($index_info['columns'] as $id => $col)
 			if (strpos($col, '(') !== false)
-				$index['columns'][$id] = substr($col, 0, strpos($col, '('));
+				$index_info['columns'][$id] = substr($col, 0, strpos($col, '('));
 
 		$columns = implode(',', $index_info['columns']);
 
@@ -903,7 +903,7 @@ class DbTable_PostgreSQL extends DbTable
 
 	/**
 	 * Static method that allows to retrieve or create an instance of this class.
-	 * @param object $_db - A Database_PostgreSQL object
+	 * @param object $db - A Database_PostgreSQL object
 	 * @return object - A DbTable_PostgreSQL object
 	 */
 	public static function db_table($db)

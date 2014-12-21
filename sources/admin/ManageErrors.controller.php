@@ -14,7 +14,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -193,7 +193,7 @@ class ManageErrors_Controller extends Action_Controller
 		$context['error_types'] = array();
 		$context['error_types'] = fetchErrorsByType($filter, $sort);
 		$tmp = array_keys($context['error_types']);
-		$sum = end($tmp);
+		$sum = (int) end($tmp);
 
 		$context['error_types']['all'] = array(
 			'label' => $txt['errortype_all'],

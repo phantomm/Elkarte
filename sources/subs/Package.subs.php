@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
@@ -313,7 +313,7 @@ function read_zip_data($data, $destination, $single_file = false, $overwrite = f
 		// In this case the CRC and size are instead appended in a 12-byte structure immediately after the compressed data
 		if ($file_info['general_purpose'] & 0x0008)
 		{
-			$unzipped2 = unpack('Vcrc/Vcompressed_size/Vsize', substr($$data, -12));
+			$unzipped2 = unpack('Vcrc/Vcompressed_size/Vsize', substr($data, -12));
 			$file_info['crc'] = $unzipped2['crc'];
 			$file_info['compressed_size'] = $unzipped2['compressed_size'];
 			$file_info['size'] = $unzipped2['size'];
@@ -531,11 +531,12 @@ function getPackageInfo($gzfilename)
 
 	$packageInfo = $packageInfo->path('package-info[0]');
 
-	$package = $packageInfo->to_array();
+	// Convert packageInfo to an array for use
+	$package = htmlspecialchars__recursive($packageInfo->to_array());
 	$package['xml'] = $packageInfo;
 	$package['filename'] = $gzfilename;
-	$package['name'] = Util::htmlspecialchars($package['name']);
 
+	// Set a default type if none was supplied in the package
 	if (!isset($package['type']))
 		$package['type'] = 'modification';
 
@@ -1689,6 +1690,7 @@ function parse_path($path)
 		'SUBSDIR' => SUBSDIR,
 		'ADMINDIR' => ADMINDIR,
 		'CONTROLLERDIR' => CONTROLLERDIR,
+		'EXTDIR' => EXTDIR,
 		'AVATARSDIR' => $modSettings['avatar_directory'],
 		'THEMEDIR' => $settings['default_theme_dir'],
 		'IMAGESDIR' => $settings['default_theme_dir'] . '/' . basename($settings['default_images_url']),
@@ -3161,10 +3163,10 @@ function package_create_backup($id = 'backup')
  * @param string $url
  * @param string $post_data = ''
  * @param bool $keep_alive = false
- * @param int $redirection_level = 0
+ * @param int $redirection_level = 2
  * @return string
  */
-function fetch_web_data($url, $post_data = '', $keep_alive = false, $redirection_level = 0)
+function fetch_web_data($url, $post_data = '', $keep_alive = false, $redirection_level = 2)
 {
 	global $webmaster_email;
 	static $keep_alive_dom = null, $keep_alive_fp = null;
@@ -3204,7 +3206,7 @@ function fetch_web_data($url, $post_data = '', $keep_alive = false, $redirection
 	// More likely a standard HTTP URL, first try to use cURL if available
 	elseif (isset($match[1]) && $match[1] === 'http' && function_exists('curl_init'))
 	{
-		$fetch_data = new Curl_Fetch_Webdata();
+		$fetch_data = new Curl_Fetch_Webdata(array(), $redirection_level);
 		$fetch_data->get_url_data($url, $post_data);
 
 		// no errors and a 200 result, then we have a good dataset, well we at least have data ;)

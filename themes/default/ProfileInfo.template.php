@@ -11,7 +11,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
@@ -744,7 +744,7 @@ function template_profile_block_contact()
 						<img src="', $settings['images_url'], '/profile/im_', $context['member']['online']['is_online'] ? 'on.png' : 'off.png', '" alt="" class="icon" />
 					</dt>
 					<dd>
-						<a href="', $scripturl, '?action=pm;sa=send;u=', $context['member']['id'], '">', $txt['send_member_pm'], '</a>
+						<a class="linkbutton" href="', $scripturl, '?action=pm;sa=send;u=', $context['member']['id'], '">', $txt['send_member_pm'], '</a>
 					</dd>';
 	}
 
@@ -753,17 +753,19 @@ function template_profile_block_contact()
 	{
 		$ci_empty = false;
 		echo '
-					<dt><img src="', $settings['images_url'], '/profile/email_sm.png" alt="', $txt['email'], '" /></dt>
+					<dt>
+						<img src="', $settings['images_url'], '/profile/email_sm.png" alt="', $txt['email'], '" />
+					</dt>
 					<dd>';
 
 		// Only show the email address fully if it's not hidden - and we reveal the email.
 		if ($context['member']['show_email'] == 'yes')
 			echo '
-						<a href="', $scripturl, '?action=emailuser;sa=email;uid=', $context['member']['id'], '">', $context['member']['email'], '</a>';
+						<a class="linkbutton" href="', $scripturl, '?action=emailuser;sa=email;uid=', $context['member']['id'], '">', $txt['email'], '</a>';
 		// ... Or if the one looking at the profile is an admin they can see it anyway.
 		elseif ($context['member']['show_email'] == 'yes_permission_override')
 			echo '
-						<em><a href="', $scripturl, '?action=emailuser;sa=email;uid=', $context['member']['id'], '">', $context['member']['email'], '</a></em>';
+						<em><a class="linkbutton" href="', $scripturl, '?action=emailuser;sa=email;uid=', $context['member']['id'], '">', $context['member']['email'], '</a></em>';
 		else
 			echo '
 						<em>', $txt['hidden'], '</em>';
@@ -839,7 +841,7 @@ function template_profile_block_other_info()
 			<h3 class="category_header hdicon cat_img_write">
 				', ($context['user']['is_owner']) ? '<a href="' . $scripturl . '?action=profile;area=forumprofile;u=' . $context['member']['id'] . '">' . $txt['profile_more'] . '</a>' : $txt['profile_more'], '
 			</h3>
-			<div class="profileblock">';
+			<div class="profileblock profileblock_signature">';
 
 	// Are there any custom profile fields for the above signature area?
 	if (!empty($context['custom_fields']))
@@ -991,7 +993,7 @@ function template_profile_block_moderation()
 			// If the person looking at the summary has permission, and the account isn't activated, give the viewer the ability to do it themselves.
 			if (!empty($context['activate_message']))
 				echo '
-					<dt class="clear"><span class="alert">', $context['activate_message'], '</span>&nbsp;(<a href="' . $scripturl . '?action=profile;save;area=activateaccount;u=' . $context['id_member'] . ';' . $context['session_var'] . '=' . $context['session_id'] . '"', ($context['activate_type'] == 4 ? ' onclick="return confirm(\'' . $txt['profileConfirm'] . '\');"' : ''), '>', $context['activate_link_text'], '</a>)</dt>';
+					<dt class="clear"><span class="alert">', $context['activate_message'], '</span>&nbsp;(<a href="' . $context['activate_url'] . '"', ($context['activate_type'] == 4 ? ' onclick="return confirm(\'' . $txt['profileConfirm'] . '\');"' : ''), '>', $context['activate_link_text'], '</a>)</dt>';
 
 			// If the current member is banned, show a message and possibly a link to the ban.
 			if (!empty($context['member']['bans']))
@@ -1036,7 +1038,7 @@ function template_profile_block_buddies()
 
 	// Set the div height to about 4 lines of buddies w/avatars
 	if (isset($context['buddies']))
-		$div_height = 120 + (4 * max(empty($modSettings['avatar_max_height_external']) ? 0 : $modSettings['avatar_max_height_external'], empty($modSettings['avatar_max_height_upload']) ? 0 : $modSettings['avatar_max_height_upload'], 65));
+		$div_height = 120 + (4 * max(empty($modSettings['avatar_max_height']) ? 0 : $modSettings['avatar_max_height'], empty($modSettings['avatar_max_height']) ? 0 : $modSettings['avatar_max_height'], 65));
 
 	if (!empty($modSettings['enable_buddylist']) && $context['user']['is_owner'])
 	{

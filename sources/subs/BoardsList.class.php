@@ -14,7 +14,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -343,7 +343,7 @@ class Boards_List
 
 			// Prepare the subject, and make sure it's not too long.
 			censorText($row_board['subject']);
-			$row_board['short_subject'] = shorten_text($row_board['subject'], $this->_subject_length);
+			$row_board['short_subject'] = Util::shorten_text($row_board['subject'], $this->_subject_length);
 			$this_last_post = array(
 				'id' => $row_board['id_msg'],
 				'time' => $row_board['poster_time'] > 0 ? standardTime($row_board['poster_time']) : $txt['not_applicable'],

@@ -11,7 +11,10 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * copyright:	2004-2011, GreyWyvern - All rights reserved.
+ * license:  	BSD, See included LICENSE.TXT for terms and conditions.
+ *
+ * @version 1.0
  *
  */
 
@@ -25,27 +28,13 @@ if (!defined('DB_TYPE'))
 /**
  * SQL database class, implements database class to control mysql functions
  */
-class Database_MySQL implements Database
+class Database_MySQL extends Database_Abstract
 {
 	/**
 	 * Holds current instance of the class
 	 * @var Database_MySQL
 	 */
 	private static $_db = null;
-
-	/**
-	 * Current connetcion to the database
-	 * @var resource
-	 */
-	private $_connection = null;
-
-	/**
-	 * Private constructor.
-	 */
-	private function __construct()
-	{
-		// Objects should be created through initiate().
-	}
 
 	/**
 	 * Initializes a database connection.
@@ -124,145 +113,6 @@ class Database_MySQL implements Database
 	}
 
 	/**
-	 * Callback for preg_replace_callback on the query.
-	 * It allows to replace on the fly a few pre-defined strings, for convenience ('query_see_board', 'query_wanna_see_board'), with
-	 * their current values from $user_info.
-	 * In addition, it performs checks and sanitization on the values sent to the database.
-	 *
-	 * @param mixed[] $matches
-	 */
-	public function replacement__callback($matches)
-	{
-		global $db_callback, $user_info, $db_prefix;
-
-		list ($values, $connection) = $db_callback;
-
-		// Connection gone???  This should *never* happen at this point, yet it does :'(
-		if (!is_object($connection))
-			display_db_error();
-
-		if ($matches[1] === 'db_prefix')
-			return $db_prefix;
-
-		if ($matches[1] === 'query_see_board')
-			return $user_info['query_see_board'];
-
-		if ($matches[1] === 'query_wanna_see_board')
-			return $user_info['query_wanna_see_board'];
-
-		if (!isset($matches[2]))
-			$this->error_backtrace('Invalid value inserted or no type specified.', '', E_USER_ERROR, __FILE__, __LINE__);
-
-		if (!isset($values[$matches[2]]))
-			$this->error_backtrace('The database value you\'re trying to insert does not exist: ' . htmlspecialchars($matches[2], ENT_COMPAT, 'UTF-8'), '', E_USER_ERROR, __FILE__, __LINE__);
-
-		$replacement = $values[$matches[2]];
-
-		switch ($matches[1])
-		{
-			case 'int':
-				if (!is_numeric($replacement) || (string) $replacement !== (string) (int) $replacement)
-					$this->error_backtrace('Wrong value type sent to the database. Integer expected. (' . $matches[2] . ')', '', E_USER_ERROR, __FILE__, __LINE__);
-				return (string) (int) $replacement;
-			break;
-
-			case 'string':
-			case 'text':
-				return sprintf('\'%1$s\'', mysqli_real_escape_string($connection, $replacement));
-			break;
-
-			case 'array_int':
-				if (is_array($replacement))
-				{
-					if (empty($replacement))
-						$this->error_backtrace('Database error, given array of integer values is empty. (' . $matches[2] . ')', '', E_USER_ERROR, __FILE__, __LINE__);
-
-					foreach ($replacement as $key => $value)
-					{
-						if (!is_numeric($value) || (string) $value !== (string) (int) $value)
-							$this->error_backtrace('Wrong value type sent to the database. Array of integers expected. (' . $matches[2] . ')', '', E_USER_ERROR, __FILE__, __LINE__);
-
-						$replacement[$key] = (string) (int) $value;
-					}
-
-					return implode(', ', $replacement);
-				}
-				else
-					$this->error_backtrace('Wrong value type sent to the database. Array of integers expected. (' . $matches[2] . ')', '', E_USER_ERROR, __FILE__, __LINE__);
-
-			break;
-
-			case 'array_string':
-				if (is_array($replacement))
-				{
-					if (empty($replacement))
-						$this->error_backtrace('Database error, given array of string values is empty. (' . $matches[2] . ')', '', E_USER_ERROR, __FILE__, __LINE__);
-
-					foreach ($replacement as $key => $value)
-						$replacement[$key] = sprintf('\'%1$s\'', mysqli_real_escape_string($connection, $value));
-
-					return implode(', ', $replacement);
-				}
-				else
-					$this->error_backtrace('Wrong value type sent to the database. Array of strings expected. (' . $matches[2] . ')', '', E_USER_ERROR, __FILE__, __LINE__);
-			break;
-
-			case 'date':
-				if (preg_match('~^(\d{4})-([0-1]?\d)-([0-3]?\d)$~', $replacement, $date_matches) === 1)
-					return sprintf('\'%04d-%02d-%02d\'', $date_matches[1], $date_matches[2], $date_matches[3]);
-				else
-					$this->error_backtrace('Wrong value type sent to the database. Date expected. (' . $matches[2] . ')', '', E_USER_ERROR, __FILE__, __LINE__);
-			break;
-
-			case 'float':
-				if (!is_numeric($replacement))
-					$this->error_backtrace('Wrong value type sent to the database. Floating point number expected. (' . $matches[2] . ')', '', E_USER_ERROR, __FILE__, __LINE__);
-				return (string) (float) $replacement;
-			break;
-
-			case 'identifier':
-				// Backticks inside identifiers are supported as of MySQL 4.1. We don't need them for Elk.
-				return '`' . strtr($replacement, array('`' => '', '.' => '')) . '`';
-			break;
-
-			case 'raw':
-				return $replacement;
-			break;
-
-			default:
-				$this->error_backtrace('Undefined type used in the database query. (' . $matches[1] . ':' . $matches[2] . ')', '', false, __FILE__, __LINE__);
-			break;
-		}
-	}
-
-	/**
-	 * Just like the db_query, escape and quote a string, but not executing the query.
-	 *
-	 * @param string $db_string
-	 * @param mixed[] $db_values
-	 * @param resource|null $connection = null
-	 */
-	public function quote($db_string, $db_values, $connection = null)
-	{
-		global $db_callback;
-
-		// Only bother if there's something to replace.
-		if (strpos($db_string, '{') !== false)
-		{
-			// This is needed by the callback function.
-			$db_callback = array($db_values, $connection === null ? $this->_connection : $connection);
-
-			// Do the quoting and escaping
-			$db_string = preg_replace_callback('~{([a-z_]+)(?::([a-zA-Z0-9_-]+))?}~', array($this, 'replacement__callback'), $db_string);
-
-			// Clear this global variable.
-			$db_callback = array();
-		}
-
-		return $db_string;
-	}
-
-	/**
 	 * Do a query.  Takes care of errors too.
 	 *
 	 * @param string $identifier
@@ -272,7 +122,7 @@ class Database_MySQL implements Database
 	 */
 	public function query($identifier, $db_string, $db_values = array(), $connection = null)
 	{
-		global $db_cache, $db_count, $db_show_debug, $time_start;
+		global $db_show_debug, $time_start;
 		global $db_unbuffered, $db_callback, $modSettings;
 
 		// Comments that are allowed in a query are preg_removed.
@@ -293,7 +143,7 @@ class Database_MySQL implements Database
 		$connection = $connection === null ? $this->_connection : $connection;
 
 		// One more query....
-		$db_count = !isset($db_count) ? 1 : $db_count + 1;
+		$this->_query_count++;
 
 		if (empty($modSettings['disableQueryCheck']) && strpos($db_string, '\'') !== false && empty($db_values['security_override']))
 			$this->error_backtrace('Hacking attempt...', 'Illegal character (\') used in query...', true, __FILE__, __LINE__);
@@ -322,28 +172,26 @@ class Database_MySQL implements Database
 		}
 
 		// Debugging.
-		if (isset($db_show_debug) && $db_show_debug === true)
+		if ($db_show_debug === true)
 		{
+			$debug = Debug::get();
 			// Get the file and line number this function was called.
 			list ($file, $line) = $this->error_backtrace('', '', 'return', __FILE__, __LINE__);
 
-			// Initialize $db_cache if not already initialized.
-			if (!isset($db_cache))
-				$db_cache = array();
-
 			if (!empty($_SESSION['debug_redirect']))
 			{
-				$db_cache = array_merge($_SESSION['debug_redirect'], $db_cache);
-				$db_count = count($db_cache) + 1;
+				$debug->merge_db($_SESSION['debug_redirect']);
+				// @todo this may be off by 1
+				$this->_query_count += count($_SESSION['debug_redirect']);
 				$_SESSION['debug_redirect'] = array();
 			}
 
 			// Don't overload it.
 			$st = microtime(true);
-			$db_cache[$db_count]['q'] = $db_count < 50 ? $db_string : '...';
-			$db_cache[$db_count]['f'] = $file;
-			$db_cache[$db_count]['l'] = $line;
-			$db_cache[$db_count]['s'] = array_sum(explode(' ', $st)) - array_sum(explode(' ', $time_start));
+			$db_cache['q'] = $this->_query_count < 50 ? $db_string : '...';
+			$db_cache['f'] = $file;
+			$db_cache['l'] = $line;
+			$db_cache['s'] = $st - $time_start;
 		}
 
 		// First, we clean strings out of the query, reduce whitespace, lowercase, and trim - so we can check it over.
@@ -399,14 +247,107 @@ class Database_MySQL implements Database
 		else
 			$ret = @mysqli_query($connection, $db_string, MYSQLI_USE_RESULT);
 
-		if ($ret === false && empty($db_values['db_error_skip']))
+		// @deprecated since 1.1 - use skip_error method
+		if (!empty($db_values['db_error_skip']))
+		{
+			$old_skip = $this->_skip_error;
+			$this->_skip_error = true;
+		}
+
+		if ($ret === false && !$this->_skip_error)
 			$ret = $this->error($db_string, $connection);
 
+		// @deprecated since 1.1 - use skip_error method
+		if (isset($old_skip))
+			$this->_skip_error = $old_skip;
+
 		// Debugging.
-		if (isset($db_show_debug) && $db_show_debug === true)
-			$db_cache[$db_count]['t'] = microtime(true) - $st;
+		if ($db_show_debug === true)
+		{
+			$db_cache['t'] = microtime(true) - $st;
+			$debug->db($db_cache);
+		}
 
 		return $ret;
+	}
+
+	/**
+	 * Checks if the string contains any 4byte chars and if so,
+	 * converts them into HTML entities.
+	 *
+	 * This is necessary because MySQL utf8 doesn't knw how to store such
+	 * characters and would generate an error any time one is used.
+	 * The 4byte chars are used by emoji
+	 *
+	 * @param string $string
+	 * @return string
+	 */
+	private function _clean_4byte_chars($string)
+	{
+		global $modSettings;
+
+		if (!empty($modSettings['using_utf8mb4']))
+			return $string;
+
+		$result = $string;
+		$ord = array_map('ord', str_split($string));
+
+		// If we are in the 4-byte range
+		if (max($ord) >= 240)
+		{
+			// Byte length
+			$length = strlen($string);
+			$result = '';
+
+			// Look for a 4byte marker
+			for ($i = 0; $i < $length; $i++)
+			{
+				// The first byte of a 4-byte character encoding starts with the bytes 0xF0-0xF4 (240 <-> 244)
+				// but look all the way to 247 for safe measure
+				$ord1 = $ord[$i];
+				if ($ord1 >= 240 && $ord1 <= 247)
+				{
+					// Replace it with the corresponding html entity
+					$entity = $this->_uniord(chr($ord[$i]) . chr($ord[$i + 1]) . chr($ord[$i + 2]) . chr($ord[$i + 3]));
+					if ($entity === false)
+						$result .= "\xEF\xBF\xBD";
+					else
+						$result .= '&#x' . dechex($entity) . ';';
+					$i += 3;
+				}
+				else
+					$result .= $string[$i];
+			}
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Converts a 4byte char into the corresponding HTML entity code.
+	 *
+	 * This function is derived from:
+	 * http://www.greywyvern.com/code/php/utf8_html.phps
+	 *
+	 * @param string $c
+	 * @return string|false
+	 */
+	private function _uniord($c)
+	{
+		if (ord($c[0]) >= 0 && ord($c[0]) <= 127)
+			return ord($c[0]);
+		if (ord($c[0]) >= 192 && ord($c[0]) <= 223)
+			return (ord($c[0]) - 192) * 64 + (ord($c[1]) - 128);
+		if (ord($c[0]) >= 224 && ord($c[0]) <= 239)
+			return (ord($c[0]) - 224) * 4096 + (ord($c[1]) - 128) * 64 + (ord($c[2]) - 128);
+		if (ord($c[0]) >= 240 && ord($c[0]) <= 247)
+			return (ord($c[0]) - 240) * 262144 + (ord($c[1]) - 128) * 4096 + (ord($c[2]) - 128) * 64 + (ord($c[3]) - 128);
+		if (ord($c[0]) >= 248 && ord($c[0]) <= 251)
+			return (ord($c[0]) - 248) * 16777216 + (ord($c[1]) - 128) * 262144 + (ord($c[2]) - 128) * 4096 + (ord($c[3]) - 128) * 64 + (ord($c[4]) - 128);
+		if (ord($c[0]) >= 252 && ord($c[0]) <= 253)
+			return (ord($c[0]) - 252) * 1073741824 + (ord($c[1]) - 128) * 16777216 + (ord($c[2]) - 128) * 262144 + (ord($c[3]) - 128) * 4096 + (ord($c[4]) - 128) * 64 + (ord($c[5]) - 128);
+		if (ord($c[0]) >= 254 && ord($c[0]) <= 255)
+			return false;
 	}
 
 	/**
@@ -428,10 +369,6 @@ class Database_MySQL implements Database
 	 */
 	public function insert_id($table, $field = null, $connection = null)
 	{
-		global $db_prefix;
-
-		$table = str_replace('{db_prefix}', $db_prefix, $table);
-
 		// MySQL doesn't need the table or field information.
 		return mysqli_insert_id($connection === null ? $this->_connection : $connection);
 	}
@@ -441,7 +378,7 @@ class Database_MySQL implements Database
 	 * MySQL implementation doesn't use $counter parameter.
 	 *
 	 * @param resource $result
-	 * @param boolean $counter = false
+	 * @param integer|bool $counter = false
 	 */
 	public function fetch_row($result, $counter = false)
 	{
@@ -538,7 +475,7 @@ class Database_MySQL implements Database
 	public function error($db_string, $connection = null)
 	{
 		global $txt, $context, $webmaster_email, $modSettings;
-		global $db_last_error, $db_persist;
+		global $db_persist;
 		global $db_server, $db_user, $db_passwd, $db_name, $db_show_debug, $ssi_db_user, $ssi_db_passwd;
 
 		// Get the file and line numbers.
@@ -587,14 +524,15 @@ class Database_MySQL implements Database
 		// Database error auto fixing ;).
 		if (function_exists('cache_get_data') && (!isset($modSettings['autoFixDatabase']) || $modSettings['autoFixDatabase'] == '1'))
 		{
+			$db_last_error = db_last_error();
 			// Force caching on, just for the error checking.
 			$old_cache = isset($modSettings['cache_enable']) ? $modSettings['cache_enable'] : null;
 			$modSettings['cache_enable'] = '1';
 
 			if (($temp = cache_get_data('db_last_error', 600)) !== null)
-				$db_last_error = max(@$db_last_error, $temp);
+				$db_last_error = max($db_last_error, $temp);
 
-			if (@$db_last_error < time() - 3600 * 24 * 3)
+			if ($db_last_error < time() - 3600 * 24 * 3)
 			{
 				// We know there's a problem... but what?  Try to auto detect.
 				if ($query_errno == 1030 && strpos($query_error, ' 127 ') !== false)
@@ -723,7 +661,7 @@ class Database_MySQL implements Database
 		if (allowedTo('admin_forum'))
 			$context['error_message'] .= '<br /><br />' . sprintf($txt['database_error_versions'], $modSettings['elkVersion']);
 
-		if (allowedTo('admin_forum') && isset($db_show_debug) && $db_show_debug === true)
+		if (allowedTo('admin_forum') && $db_show_debug === true)
 			$context['error_message'] .= '<br /><br />' . nl2br($db_string);
 
 		// It's already been logged... don't log it again.
@@ -751,12 +689,12 @@ class Database_MySQL implements Database
 		if (empty($data))
 			return;
 
-		// Replace the prefix holder with the actual prefix.
-		$table = str_replace('{db_prefix}', $db_prefix, $table);
-
 		// Inserting data as a single row can be done as a single array.
 		if (!is_array($data[array_rand($data)]))
 			$data = array($data);
+
+		// Replace the prefix holder with the actual prefix.
+		$table = str_replace('{db_prefix}', $db_prefix, $table);
 
 		// Create the mold for a single row insert.
 		$insertData = '(';
@@ -776,7 +714,7 @@ class Database_MySQL implements Database
 		// Here's where the variables are injected to the query.
 		$insertRows = array();
 		foreach ($data as $dataRow)
-			$insertRows[] = $this->quote($insertData, array_combine($indexed_columns, $dataRow), $connection);
+			$insertRows[] = $this->quote($insertData, $this->_array_combine($indexed_columns, $dataRow), $connection);
 
 		// Determine the method of insertion.
 		$queryTitle = $method == 'replace' ? 'REPLACE' : ($method == 'ignore' ? 'INSERT IGNORE' : 'INSERT');
@@ -793,79 +731,6 @@ class Database_MySQL implements Database
 			),
 			$connection
 		);
-	}
-
-	/**
-	 * This function tries to work out additional error information from a back trace.
-	 *
-	 * @param string $error_message
-	 * @param string $log_message
-	 * @param string|boolean $error_type
-	 * @param string|null $file
-	 * @param integer|null $line
-	 */
-	public function error_backtrace($error_message, $log_message = '', $error_type = false, $file = null, $line = null)
-	{
-		if (empty($log_message))
-			$log_message = $error_message;
-
-		foreach (debug_backtrace() as $step)
-		{
-			// Found it?
-			if (!method_exists($this, $step['function']) && !in_array(substr($step['function'], 0, 7), array('elk_db_', 'preg_re', 'db_erro', 'call_us')))
-			{
-				$log_message .= '<br />Function: ' . $step['function'];
-				break;
-			}
-
-			if (isset($step['line']))
-			{
-				$file = $step['file'];
-				$line = $step['line'];
-			}
-		}
-
-		// A special case - we want the file and line numbers for debugging.
-		if ($error_type == 'return')
-			return array($file, $line);
-
-		// Is always a critical error.
-		if (function_exists('log_error'))
-			log_error($log_message, 'critical', $file, $line);
-
-		if (function_exists('fatal_error'))
-		{
-			fatal_error($error_message, false);
-
-			// Cannot continue...
-			exit;
-		}
-		elseif ($error_type)
-			trigger_error($error_message . ($line !== null ? '<em>(' . basename($file) . '-' . $line . ')</em>' : ''), $error_type);
-		else
-			trigger_error($error_message . ($line !== null ? '<em>(' . basename($file) . '-' . $line . ')</em>' : ''));
-	}
-
-	/**
-	 * Escape the LIKE wildcards so that they match the character and not the wildcard.
-	 *
-	 * @param string $string
-	 * @param bool $translate_human_wildcards = false, if true, turns human readable wildcards into SQL wildcards.
-	 */
-	public function escape_wildcard_string($string, $translate_human_wildcards = false)
-	{
-		$replacements = array(
-			'%' => '\%',
-			'_' => '\_',
-			'\\' => '\\\\',
-		);
-
-		if ($translate_human_wildcards)
-			$replacements += array(
-				'*' => '%',
-			);
-
-		return strtr($string, $replacements);
 	}
 
 	/**
@@ -1114,22 +979,6 @@ class Database_MySQL implements Database
 	}
 
 	/**
-	 * This function optimizes a table.
-	 *
-	 * @param string $table - the table to be optimized
-	 *
-	 * @deprecated since 1.1 - the function was moved to DbTable class
-	 *
-	 * @return int how much it was gained
-	 */
-	public function db_optimize_table($table)
-	{
-		$db_table = db_table();
-
-		return $db_table->optimize($table);
-	}
-
-	/**
 	 * Backup $table_name to $backup_table.
 	 *
 	 * @param string $table_name
@@ -1306,7 +1155,9 @@ class Database_MySQL implements Database
 	 */
 	public function escape_string($string)
 	{
-		return addslashes($string);
+		$string = $this->_clean_4byte_chars($string);
+
+		return mysqli_real_escape_string($this->_connection, $string);
 	}
 
 	/**
@@ -1370,21 +1221,20 @@ class Database_MySQL implements Database
 	}
 
 	/**
-	 * Retrieve the connection object
-	 *
-	 * @return resource
-	 */
-	public function connection()
-	{
-		// find it, find it
-		return $this->_connection;
-	}
-
-	/**
 	 * Returns a reference to the existing instance
 	 */
 	public static function db()
 	{
 		return self::$_db;
+	}
+
+	/**
+	 * Finds out if the connection is still valid.
+	 *
+	 * @param object|null $connection = null
+	 */
+	protected function _validConnection($connection = null)
+	{
+		return is_object($connection);
 	}
 }

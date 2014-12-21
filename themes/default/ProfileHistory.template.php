@@ -11,7 +11,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -112,7 +112,7 @@ function template_trackIP()
 
 		foreach ($context['whois_servers'] as $server)
 			echo '
-					<a href="', $server['url'], '" target="_blank" class="new_win"', isset($context['auto_whois_server']) && $context['auto_whois_server']['name'] == $server['name'] ? ' style="font-weight: bold;"' : '', '>', $server['name'], '</a><br />';
+					<a href="', $server['url'], '" target="_blank" class="new_win">', $server['name'], '</a><br />';
 
 		echo '
 			</div>';

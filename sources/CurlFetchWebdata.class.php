@@ -7,7 +7,7 @@
  * @copyright ElkArte Forum contributors
  * @license   BSD http://opensource.org/licenses/BSD-3-Clause
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
@@ -186,6 +186,7 @@ class Curl_Fetch_Webdata
 			'url' => $url,
 			'code' => $http_code,
 			'error' => $error,
+			'size' => !empty($curl_info['download_content_length']) ? $curl_info['download_content_length'] : 0,
 			'headers' => !empty($this->_headers) ? $this->_headers : false,
 			'body' => $body,
 		);
@@ -285,7 +286,6 @@ class Curl_Fetch_Webdata
 		}
 		else
 			return $post_data;
-
 	}
 
 	/**
@@ -351,7 +351,7 @@ class Curl_Fetch_Webdata
 
 		// set proper headers only
 		if (isset($temp[0]) && isset($temp[1]))
-			$this->_headers[strtolower($temp[0])] = strtolower(trim($temp[1]));
+			$this->_headers[strtolower($temp[0])] = trim($temp[1]);
 
 		// return the length of what was *passed* unless you want a Failed writing header error ;)
 		return strlen($header);

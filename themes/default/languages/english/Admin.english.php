@@ -46,6 +46,7 @@ $txt['admin_maintenance'] = 'Maintenance';
 $txt['admin_image_text'] = 'Show buttons as images instead of text';
 $txt['admin_credits'] = 'Credits';
 $txt['admin_agreement'] = 'Show and require agreement letter when registering';
+$txt['admin_checkbox_agreement'] = 'Show a checkbox for the agreement in registration form instead of a full page';
 $txt['admin_agreement_default'] = 'Default';
 $txt['admin_agreement_select_language'] = 'Language to edit';
 $txt['admin_agreement_select_language_change'] = 'Change';
@@ -109,9 +110,7 @@ $txt['attachmentdir_size_not_set'] = 'No maximum directory size is currently set
 $txt['attachmentdir_files_not_set'] = 'No directory file limit is currently set';
 $txt['attachment_delete_admin'] = '[attachment deleted by admin]';
 $txt['live'] = 'Latest Software Updates';
-$txt['try_searching'] = 'Don\'t you know where a setting is? Try searching the admin area!';
 $txt['remove_all'] = 'Clear Log';
-$txt['approve_new_members'] = 'Admin must approve all new members';
 $txt['agreement_not_writable'] = 'Warning - agreement.txt is not writable, any changes you make will NOT be saved.';
 
 $txt['version_check_desc'] = 'This shows you the versions of your installation\'s files versus those of the latest version. If any of these files are out of date, you should download and upgrade to the latest version at our <a href="https://github.com/elkarte/Elkarte/wiki/downloads" target="_blank" class="new_win">ElkArte Site</a>.';
@@ -121,6 +120,7 @@ $txt['lfyi'] = 'You are unable to connect to ElkArte\'s latest news file.';
 
 $txt['manage_calendar'] = 'Calendar';
 $txt['manage_search'] = 'Search';
+$txt['viewmembers_online'] = 'Last Online';
 
 $txt['smileys_manage'] = 'Smileys and Message Icons';
 $txt['smileys_manage_info'] = 'Install new smiley sets, add smileys to existing sets or manage your message icons.';
@@ -129,12 +129,7 @@ $txt['theme_admin'] = 'Theme Management';
 $txt['theme_admin_info'] = 'Install new themes, select themes that are available for your users and set or reset theme options.';
 $txt['registration_center'] = 'Registration';
 $txt['member_center_info'] = 'View the member list, search for members, or manage account approvals and activations.';
-
-$txt['viewmembers_name'] = 'Username (display name)';
 $txt['viewmembers_online'] = 'Last Online';
-$txt['viewmembers_today'] = 'Today';
-$txt['viewmembers_day_ago'] = 'day ago';
-$txt['viewmembers_days_ago'] = 'days ago';
 
 $txt['display_name'] = 'Display name';
 $txt['email_address'] = 'Email Address';
@@ -147,7 +142,6 @@ Referer: %1$s
 User agent: %2$s
 IP: %3$s';
 
-$txt['email_preview_warning'] = 'The preview is not 100% accurate. In order to preserve the functionality of the page only the basic html tags are represented';
 $txt['email_as_html'] = 'Send in HTML format.  (with this you can put normal HTML in the email.)';
 $txt['email_parsed_html'] = 'Add &lt;br /&gt;s and &amp;nbsp;s to this message.';
 $txt['email_variables'] = 'In this message you can use a few &quot;variables&quot;.<a href="{help_emailmembers}" class="help"> Click here for more information</a>.';
@@ -294,7 +288,7 @@ $txt['censor_case'] = 'Ignore case when censoring.';
 $txt['censor_whole_words'] = 'Check only whole words.';
 $txt['censor_allow'] = 'Allow users to turn off word censoring.';
 
-$txt['admin_confirm_password'] = '(confirm)';
+$txt['admin_confirm_password'] = '(confirm password)';
 $txt['admin_incorrect_password'] = 'Incorrect Password';
 
 $txt['date_format'] = '(YYYY-MM-DD)';
@@ -307,8 +301,6 @@ $txt['is_banned'] = 'Banned';
 $txt['primary'] = 'Primary';
 $txt['additional'] = 'Additional';
 $txt['wild_cards_allowed'] = 'wildcard characters * and ? are allowed';
-$txt['search_for'] = 'Search for';
-$txt['search_match'] = 'Match';
 $txt['member_part_of_these_membergroups'] = 'Member is part of these member groups';
 $txt['membergroups'] = 'Member groups';
 $txt['confirm_delete_members'] = 'Are you sure you want to delete the selected members?';
@@ -318,7 +310,6 @@ $txt['support_credits_info'] = 'Support links for most common issues, the releva
 $txt['support_title'] = 'Support Information';
 $txt['support_versions_current'] = 'Current version';
 $txt['support_versions_forum'] = 'This version';
-$txt['support_versions_php'] = 'PHP version';
 $txt['support_versions_db'] = '%1$s version';
 $txt['support_versions_server'] = 'Server version';
 $txt['support_versions_gd'] = 'GD version';
@@ -328,8 +319,10 @@ $txt['support_resources'] = 'Support Resources';
 $txt['support_resources_p1'] = 'Our <a href="%1$s" target="_blank" class="new_win">Documentation Wiki</a> provides the main documentation for ElkArte. The ElkArte Online Manual has many documents to help answer support questions and explain <a href="%2$s" target="_blank" class="new_win">Features</a>, <a href="%3$s" target="_blank" class="new_win">Settings</a>, <a href="%4$s" target="_blank" class="new_win">Themes</a>, <a href="%5$s" target="_blank" class="new_win">Packages</a>, etc. The Online Manual documents each area of ElkArte thoroughly and should answer most questions quickly.';
 $txt['support_resources_p2'] = 'If you can\'t find the answers to your questions in the Documentation Wiki, you may want to search our <a href="%1$s" target="_blank" class="new_win">Support Community</a> or ask for assistance in our support boards. The ElkArte Support Community can be used for <a href="%2$s" target="_blank" class="new_win">support</a>, <a href="%3$s" target="_blank" class="new_win">customization</a>, and many other things such as discussing ElkArte, finding a host, and discussing administrative issues with other forum administrators.';
 
-$txt['support_latest'] = 'Common support &amp; issues';
-$txt['support_latest_fetch'] = 'Retrieving support information...';
+$txt['latest_updates'] = 'Latest noteworthy updates';
+$txt['new_in_1_0_2'] = 'The most significant change in ElkArte 1.0.2 is avatar permission management. Currently each method of setting an avatar is permission-based, requiring the enabling/disabling of each method for each group. With 1.0.2 avatars are simply enabled/disabled by user group, this allows the enabled groups to add an avatar (by all available methods).<br />
+The only permission available is a general one to allow members to change or not their avatars. Additionally there is only one setting for maximum width and height of avatars, these values apply to all avatar methods.<br /><br />
+Due to the nature of the changes it was not impossible to migrate existing settings to the new format, for that reason you are encouraged to visit the <a href="{admin_url};area=manageattachments;sa=avatars">Avatar Settings</a> page and set the options you prefer.';
 
 $txt['edit_permissions_info'] = 'Use permission settings to manage global and specific board features and what actions that guest, members and moderators can do.';
 $txt['membergroups_members'] = 'Regular Members';
@@ -341,9 +334,7 @@ $txt['permitgroups_restrict'] = 'Restrictive';
 $txt['permitgroups_standard'] = 'Standard';
 $txt['permitgroups_moderator'] = 'Moderator';
 $txt['permitgroups_maintenance'] = 'Maintenance';
-$txt['permitgroups_inherit'] = 'Inherit';
 
-$txt['confirm_delete_attachments_all'] = 'Are you sure you want to delete all attachments?';
 $txt['confirm_delete_attachments'] = 'Are you sure you want to delete the selected attachments?';
 $txt['attachment_manager_browse_files'] = 'Browse Files';
 $txt['attachment_manager_repair'] = 'Maintain';
@@ -473,31 +464,27 @@ $txt['attachment_transfer_progress'] = 'Please wait. Transfer in progress.';
 
 $txt['avatar_settings'] = 'General avatar settings';
 $txt['avatar_default'] = 'Enable a default avatar for all users without their own avatar';
-$txt['mods_cat_avatars'] = 'Avatars';
 $txt['avatar_directory'] = 'Avatars directory';
 $txt['avatar_url'] = 'Avatars URL';
-$txt['avatar_max_width_external'] = 'Maximum width of external avatar';
-$txt['avatar_max_height_external'] = 'Maximum height of external avatar';
+$txt['avatar_max_width'] = 'Maximum width of avatars in pixels (px)';
+$txt['avatar_max_height'] = 'Maximum height of avatars in pixels (px)';
 $txt['avatar_action_too_large'] = 'If the avatar is too large...';
 $txt['option_refuse'] = 'Refuse it';
-$txt['option_html_resize'] = 'Let the HTML resize it';
-$txt['option_js_resize'] = 'Resize it with JavaScript';
-$txt['option_download_and_resize'] = 'Download and resize it (requires GD module)';
+$txt['option_resize'] = 'Let the CSS resize it';
+$txt['option_download_and_resize'] = 'Download and resize it (requires GD module or ImageMagick)';
 $txt['gravatar'] = 'Gravatars';
-$txt['gravatar_groups'] = 'Member groups allowed to select a Gravatar';
+$txt['avatar_gravatar_enabled'] = 'Enable use of gravatars';
 $txt['gravatar_rating'] = 'Gravatar Rating';
-$txt['avatar_max_width_upload'] = 'Maximum width of uploaded avatar';
-$txt['avatar_max_height_upload'] = 'Maximum height of uploaded avatar';
-$txt['avatar_resize_upload'] = 'Resize oversized large avatars';
-$txt['avatar_resize_upload_note'] = '(requires GD module)';
 $txt['avatar_download_png'] = 'Use PNG for resized avatars';
 $txt['avatar_img_enc_warning'] = 'Neither the GD module nor ImageMagick are currently installed. Some avatar features are disabled.';
 $txt['avatar_external'] = 'External avatars';
+$txt['avatar_external_enabled'] = 'Enable use of external (remote/URL) avatars';
 $txt['avatar_upload'] = 'Uploadable avatars';
+$txt['avatar_resize_options'] = 'Server storage options';
+$txt['avatar_upload_enabled'] = 'Enable the upload of avatars';
 $txt['avatar_server_stored'] = 'Server-stored avatars';
-$txt['avatar_server_stored_groups'] = 'Member groups allowed to select a server stored avatar';
-$txt['avatar_upload_groups'] = 'Member groups allowed to upload an avatar to the server';
-$txt['avatar_external_url_groups'] = 'Member groups allowed to select an avatar from an external URL';
+$txt['avatar_stored_enabled'] = 'Enable the selection of server stored avatars';
+$txt['profile_set_avatar'] = 'Member groups allowed to select an avatar';
 $txt['avatar_select_permission'] = 'Select permissions for each group';
 $txt['avatar_download_external'] = 'Download avatar at given URL';
 $txt['custom_avatar_enabled'] = 'Upload avatars to...';
@@ -697,7 +684,6 @@ $txt['badbehavior_title'] = 'Bad Behavior';
 $txt['mods_cat_modifications_misc'] = 'Miscellaneous';
 $txt['mods_cat_layout'] = 'Layout';
 $txt['karma'] = 'Karma';
-$txt['likes'] = 'Likes';
 $txt['mentions_settings_desc'] = 'Mentioning allow members of your community to be alerted when they are @mentioned in a post, added as a buddy or if one of their posts is liked by another member.';
 $txt['moderation_settings_short'] = 'Moderation';
 $txt['signature_settings_short'] = 'Signatures';
@@ -743,7 +729,6 @@ $txt['themeadmin_edit_title'] = 'Modify Themes';
 $txt['admin_browse_register_new'] = 'Register new member';
 
 $txt['search_engines'] = 'Search Engines';
-$txt['spiders'] = 'Spiders';
 $txt['spider_logs'] = 'Spider Log';
 $txt['spider_stats'] = 'Stats';
 

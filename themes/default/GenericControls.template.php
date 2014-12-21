@@ -11,7 +11,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.1
  *
  */
 
@@ -27,6 +27,46 @@ function template_control_richedit($editor_id, $smileyContainer = null, $bbcCont
 	global $context, $settings, $options;
 
 	$editor_context = &$context['controls']['richedit'][$editor_id];
+
+	$plugins = array_filter(array('bbcode', 'splittag', (!empty($context['mentions_enabled']) ? 'mention' : ''), (!empty($context['drafts_autosave']) && !empty($options['drafts_autosave_enabled']) ? 'draft' : '')));
+
+	// Allow addons to insert additional editor plugin scripts
+	if (!empty($editor_context['plugin_addons']) && is_array($editor_context['plugin_addons']))
+		$plugins = array_filter(array_merge($plugins, $editor_context['plugin_addons']));
+
+	// Add in special config objects to the editor, typically for plugin use
+	$plugin_options = array();
+	$plugin_options[] = '
+					parserOptions: {
+						quoteType: $.sceditor.BBCodeParser.QuoteType.auto
+					}';
+
+	// Drafts?
+	if (!empty($context['drafts_autosave']) && !empty($options['drafts_autosave_enabled']))
+			$plugin_options[] = '
+					draftOptions: {
+						sLastNote: \'draft_lastautosave\',
+						sSceditorID: \'' . $editor_id . '\',
+						sType: \'post\',
+						iBoard: ' . (empty($context['current_board']) ? 0 : $context['current_board']) . ',
+						iFreq: ' . $context['drafts_autosave_frequency'] . ',' . (!empty($context['drafts_save']) ?
+						'sLastID: \'id_draft\'' : 'sLastID: \'id_pm_draft\', bPM: true') . '
+					}';
+
+	if (!empty($context['mentions_enabled']))
+			$plugin_options[] = '
+					mentionOptions: {
+						editor_id: \'' . $editor_id . '\',
+						cache: {
+							mentions: [],
+							queries: [],
+							names: []
+						}
+					}';
+
+	// Allow addons to insert additional editor objects
+	if (!empty($editor_context['plugin_options']) && is_array($editor_context['plugin_options']))
+		$plugin_options = array_merge($plugin_options, $editor_context['plugin_options']);
 
 	echo '
 		<div id="editor_toolbar_container"></div>
@@ -48,28 +88,11 @@ function template_control_richedit($editor_id, $smileyContainer = null, $bbcCont
 					resizeMaxHeight: -1,
 					emoticonsCompat: true,
 					locale: "', !empty($editor_context['locale']) ? $editor_context['locale'] : 'en_US', '",
+					rtl: ', empty($context['right_to_left']) ? 'false' : 'true', ',
 					colors: "black,red,yellow,pink,green,orange,purple,blue,beige,brown,teal,navy,maroon,limegreen,white",
 					enablePasteFiltering: true,
-					plugins: "bbcode, splittag', !empty($context['mentions_enabled']) ? ', mention' : '', (!empty($context['drafts_autosave']) && !empty($options['drafts_autosave_enabled']) ? ', draft",
-					draftOptions: {
-						sLastNote: \'draft_lastautosave\',
-						sSceditorID: \'' . $editor_id . '\',
-						sType: \'post\',
-						iBoard: ' . (empty($context['current_board']) ? 0 : $context['current_board']) . ',
-						iFreq: ' . $context['drafts_autosave_frequency'] . ',' . (!empty($context['drafts_save']) ?
-						'sLastID: \'id_draft\'' : 'sLastID: \'id_pm_draft\', bPM: true') . '
-					},' : '",'), (!empty($context['mentions_enabled']) ? '
-					mentionOptions: {
-						editor_id: \'' . $editor_id . '\',
-						cache: {
-							mentions: [],
-							queries: [],
-							names: []
-						}
-					},' : ''), '
-					parserOptions: {
-						quoteType: $.sceditor.BBCodeParser.QuoteType.auto
-					}';
+					plugins: "', implode(',', $plugins), '",
+					', trim(implode(',', $plugin_options));
 
 	// Show the smileys.
 	if ((!empty($context['smileys']['postform']) || !empty($context['smileys']['popup'])) && !$editor_context['disable_smiley_box'] && $smileyContainer !== null)
@@ -166,9 +189,16 @@ function template_control_richedit_buttons($editor_id)
 
 	$editor_context = &$context['controls']['richedit'][$editor_id];
 
+	echo '
+		<span class="shortcuts">';
+
+	// If this message has been edited in the past - display when it was.
+	if (isset($context['last_modified']))
+		echo '
+			<p class="lastedit">', $context['last_modified_text'], '</p>';
+
 	// Show the helpful shortcut text
 	echo '
-		<span class="shortcuts">
 			', $context['shortcuts_text'], '
 		</span>
 		<input type="submit" value="', isset($editor_context['labels']['post_button']) ? $editor_context['labels']['post_button'] : $txt['post'], '" tabindex="', $context['tabindex']++, '" onclick="return submitThisOnce(this);" accesskey="s" class="button_submit" />';
@@ -202,7 +232,7 @@ function template_control_richedit_buttons($editor_id)
 	if (!empty($context['drafts_autosave']) && !empty($options['drafts_autosave_enabled']))
 		echo '
 		<div class="draftautosave">
-			<span id="throbber" style="display:none"><i class="fa fa-spinner fa-spin" alt="loading"></i>&nbsp;</span>
+			<span id="throbber" style="display:none"><i class="fa fa-spinner fa-spin"></i>&nbsp;</span>
 			<span id="draft_lastautosave"></span>
 		</div>';
 }

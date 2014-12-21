@@ -13,7 +13,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:		BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.1
  *
  */
 
@@ -183,7 +183,7 @@ class ManageCalendar_Controller extends Action_Controller
 				array(
 					'position' => 'below_table_data',
 					'class' => 'submitbutton',
-					'value' => '<input type="submit" name="delete" value="' . $txt['quickmod_delete_selected'] . '" class="right_submit" />
+					'value' => '<input type="submit" name="delete" value="' . $txt['quickmod_delete_selected'] . '" class="right_submit" onclick="return confirm(\'' . $txt['holidays_delete_confirm'] . '\');" />
 					<a class="linkbutton" href="' . $scripturl . '?action=admin;area=managecalendar;sa=editholiday">' . $txt['holidays_add'] . '</a>',
 				),
 			),
@@ -274,6 +274,7 @@ class ManageCalendar_Controller extends Action_Controller
 
 		// Get the final touches in place.
 		$context['post_url'] = $scripturl . '?action=admin;area=managecalendar;save;sa=settings';
+		$context[$context['admin_menu_name']]['current_subsection'] = 'settings';
 
 		// Saving the settings?
 		if (isset($_GET['save']))

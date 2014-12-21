@@ -15,7 +15,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0.2
  *
  */
 
@@ -50,9 +50,9 @@ function preparsecode(&$message, $previewing = false)
 
 	// Trim off trailing quotes - these often happen by accident.
 	while (substr($message, -7) == '[quote]')
-		$message = substr($message, 0, -7);
+		$message = trim(substr($message, 0, -7));
 	while (substr($message, 0, 8) == '[/quote]')
-		$message = substr($message, 8);
+		$message = trim(substr($message, 8));
 
 	// Find all code blocks, work out whether we'd be parsing them, then ensure they are all closed.
 	$in_tag = false;
@@ -114,18 +114,6 @@ function preparsecode(&$message, $previewing = false)
 				$parts[$i] = preg_replace('~(\[footnote\])/me(?: |&nbsp;)([^\n]*?)(\[\/footnote\])~i', '$1[me=' . $user_info['name'] . ']$2[/me]$3', $parts[$i]);
 			}
 
-			if (!$previewing && strpos($parts[$i], '[html]') !== false)
-			{
-				if (allowedTo('admin_forum'))
-					$parts[$i] = preg_replace_callback('~\[html\](.+?)\[/html\]~is', 'preparsecode_html_callback', $parts[$i]);
-				// We should edit them out, or else if an admin edits the message they will get shown...
-				else
-				{
-					while (strpos($parts[$i], '[html]') !== false)
-						$parts[$i] = preg_replace('~\[[/]?html\]~i', '', $parts[$i]);
-				}
-			}
-
 			// Make sure all tags are lowercase.
 			$parts[$i] = preg_replace_callback('~\[([/]?)(list|li|table|tr|td|th)((\s[^\]]+)*)\]~i', 'preparsecode_lowertags_callback', $parts[$i]);
 
@@ -155,8 +143,8 @@ function preparsecode(&$message, $previewing = false)
 				'~\[(table|/tr)\]([\s' . $non_breaking_space . ']*)\[tr\]~su' => '[$1]$2[_tr_]',
 				// Any remaining [tr]s should have a [table] before them.
 				'~\[tr\]~s' => '[table][tr]',
-				// Look for [/td]s followed by [/tr].
-				'~\[/td\]([\s' . $non_breaking_space . ']*)\[/tr\]~su' => '[/td]$1[_/tr_]',
+				// Look for [/td]s or [/th]s followed by [/tr].
+				'~\[/t([dh])\]([\s' . $non_breaking_space . ']*)\[/tr\]~su' => '[/t$1]$2[_/tr_]',
 				// Any remaining [/tr]s should have a [/td].
 				'~\[/tr\]~s' => '[/td][/tr]',
 				// Look for properly opened [li]s which aren't closed.
@@ -181,7 +169,7 @@ function preparsecode(&$message, $previewing = false)
 				// Images with no real url.
 				'~\[img\]https?://.{0,7}\[/img\]~' => '',
 				// Font tags with multiple fonts (copy&paste in the WYSIWYG by some browsers).
-				'~\[font=\\\'?(.*?)\\\'?(?=\,).*\](.*?(?:\[/font\]))~' => '[font=$1]$2',
+				'~\[font=\\\'?(.*?)\\\'?(?=\,[ \'\"A-Za-z]*\]).*?\](.*?(?:\[/font\]))~s'  => '[font=$1]$2'
 			);
 
 			// Fix up some use of tables without [tr]s, etc. (it has to be done more than once to catch it all.)
@@ -298,17 +286,6 @@ function preparsecode_nobbc_callback($matches)
 }
 
 /**
- * Prepares text inside of html tags to make them safe for display and prevent bbc rendering
- *
- * @package Posts
- * @param string[] $matches
- */
-function preparsecode_html_callback($matches)
-{
-	return '[html]' . strtr(un_htmlspecialchars($matches[1]), array("\n" => '&#13;', '  ' => ' &#32;', '[' => '&#91;', ']' => '&#93;')) . '[/html]';
-}
-
-/**
  * Takes a tag and lowercases it
  *
  * @package Posts
@@ -332,26 +309,11 @@ function un_preparsecode($message)
 	// We're going to unparse only the stuff outside [code]...
 	for ($i = 0, $n = count($parts); $i < $n; $i++)
 	{
-		// If $i is a multiple of four (0, 4, 8, ...) then it's not a code section...
-		if ($i % 4 == 0)
-			$parts[$i] = preg_replace_callback('~\[html\](.+?)\[/html\]~i', 'preparsecode_unhtml_callback', $parts[$i]);
-
 		call_integration_hook('integrate_unpreparse_code', array(&$message, &$parts, &$i));
 	}
 
 	// Change breaks back to \n's and &nsbp; back to spaces.
 	return preg_replace('~<br( /)?' . '>~', "\n", str_replace('&nbsp;', ' ', implode('', $parts)));
-}
-
-/**
- * Reverses what was done by preparsecode to html tags
- *
- * @package Posts
- * @param string[] $matches
- */
-function preparsecode_unhtml_callback($matches)
-{
-	return '[html]' . strtr(htmlspecialchars($matches[1], ENT_QUOTES, 'UTF-8'), array('\\&quot;' => '&quot;', '&amp;#13;' => '<br />', '&amp;#32;' => ' ', '&amp;#91;' => '[', '&amp;#93;' => ']')) . '[/html]';
 }
 
 /**
@@ -628,17 +590,8 @@ function createPost(&$msgOptions, &$topicOptions, &$posterOptions)
 		$topicOptions['is_approved'] = true;
 	elseif (!empty($topicOptions['id']) && !isset($topicOptions['is_approved']))
 	{
-		$request = $db->query('', '
-			SELECT approved
-			FROM {db_prefix}topics
-			WHERE id_topic = {int:id_topic}
-			LIMIT 1',
-			array(
-				'id_topic' => $topicOptions['id'],
-			)
-		);
-		list ($topicOptions['is_approved']) = $db->fetch_row($request);
-		$db->free_result($request);
+		$is_approved = topicAttribute($topicOptions['id'], array('approved'));
+		$topicOptions['is_approved'] = $is_approved['approved'];
 	}
 
 	// If nothing was filled in as name/email address, try the member table.
@@ -681,15 +634,35 @@ function createPost(&$msgOptions, &$topicOptions, &$posterOptions)
 	$new_topic = empty($topicOptions['id']);
 
 	$message_columns = array(
-		'id_board' => 'int', 'id_topic' => 'int', 'id_member' => 'int', 'subject' => 'string-255', 'body' => (!empty($modSettings['max_messageLength']) && $modSettings['max_messageLength'] > 65534 ? 'string-' . $modSettings['max_messageLength'] : (empty($modSettings['max_messageLength']) ? 'string' : 'string-65534')),
-		'poster_name' => 'string-255', 'poster_email' => 'string-255', 'poster_time' => 'int', 'poster_ip' => 'string-255',
-		'smileys_enabled' => 'int', 'modified_name' => 'string', 'icon' => 'string-16', 'approved' => 'int',
+		'id_board' => 'int',
+		'id_topic' => 'int',
+		'id_member' => 'int',
+		'subject' => 'string-255',
+		'body' => (!empty($modSettings['max_messageLength']) && $modSettings['max_messageLength'] > 65534 ? 'string-' . $modSettings['max_messageLength'] : (empty($modSettings['max_messageLength']) ? 'string' : 'string-65534')),
+		'poster_name' => 'string-255',
+		'poster_email' => 'string-255',
+		'poster_time' => 'int',
+		'poster_ip' => 'string-255',
+		'smileys_enabled' => 'int',
+		'modified_name' => 'string',
+		'icon' => 'string-16',
+		'approved' => 'int',
 	);
 
 	$message_parameters = array(
-		$topicOptions['board'], $topicOptions['id'], $posterOptions['id'], $msgOptions['subject'], $msgOptions['body'],
-		$posterOptions['name'], $posterOptions['email'], time(), $posterOptions['ip'],
-		$msgOptions['smileys_enabled'] ? 1 : 0, '', $msgOptions['icon'], $msgOptions['approved'],
+		'id_board' => $topicOptions['board'],
+		'id_topic' => $topicOptions['id'],
+		'id_member' => $posterOptions['id'],
+		'subject' => $msgOptions['subject'],
+		'body' => $msgOptions['body'],
+		'poster_name' => $posterOptions['name'],
+		'poster_email' => $posterOptions['email'],
+		'poster_time' => empty($posterOptions['time']) ? time() : $posterOptions['time'],
+		'poster_ip' => $posterOptions['ip'],
+		'smileys_enabled' => $msgOptions['smileys_enabled'] ? 1 : 0,
+		'modified_name' => '',
+		'icon' => $msgOptions['icon'],
+		'approved' => $msgOptions['approved'],
 	);
 
 	// What if we want to do anything with posts?
@@ -727,16 +700,24 @@ function createPost(&$msgOptions, &$topicOptions, &$posterOptions)
 	if ($new_topic)
 	{
 		$topic_columns = array(
-			'id_board' => 'int', 'id_member_started' => 'int', 'id_member_updated' => 'int', 'id_first_msg' => 'int',
-			'id_last_msg' => 'int', 'locked' => 'int', 'is_sticky' => 'int', 'num_views' => 'int',
-			'id_poll' => 'int', 'unapproved_posts' => 'int', 'approved' => 'int',
-			'redirect_expires' => 'int', 'id_redirect_topic' => 'int',
+			'id_board' => 'int', 'id_member_started' => 'int',
+			'id_member_updated' => 'int', 'id_first_msg' => 'int',
+			'id_last_msg' => 'int', 'locked' => 'int',
+			'is_sticky' => 'int', 'num_views' => 'int',
+			'id_poll' => 'int',
+			'unapproved_posts' => 'int', 'approved' => 'int',
+			'redirect_expires' => 'int',
+			'id_redirect_topic' => 'int',
 		);
 		$topic_parameters = array(
-			$topicOptions['board'], $posterOptions['id'], $posterOptions['id'], $msgOptions['id'],
-			$msgOptions['id'], $topicOptions['lock_mode'] === null ? 0 : $topicOptions['lock_mode'], $topicOptions['sticky_mode'] === null ? 0 : $topicOptions['sticky_mode'], 0,
-			$topicOptions['poll'] === null ? 0 : $topicOptions['poll'], $msgOptions['approved'] ? 0 : 1, $msgOptions['approved'],
-			$topicOptions['redirect_expires'] === null ? 0 : $topicOptions['redirect_expires'], $topicOptions['redirect_topic'] === null ? 0 : $topicOptions['redirect_topic'],
+			'id_board' => $topicOptions['board'], 'id_member_started' => $posterOptions['id'],
+			'id_member_updated' => $posterOptions['id'], 'id_first_msg' => $msgOptions['id'],
+			'id_last_msg' => $msgOptions['id'], 'locked' => $topicOptions['lock_mode'] === null ? 0 : $topicOptions['lock_mode'],
+			'is_sticky' => $topicOptions['sticky_mode'] === null ? 0 : $topicOptions['sticky_mode'], 'num_views' => 0,
+			'id_poll' => $topicOptions['poll'] === null ? 0 : $topicOptions['poll'],
+			'unapproved_posts' =>  $msgOptions['approved'] ? 0 : 1, 'approved' => $msgOptions['approved'],
+			'redirect_expires' => $topicOptions['redirect_expires'] === null ? 0 : $topicOptions['redirect_expires'],
+			'id_redirect_topic' => $topicOptions['redirect_topic'] === null ? 0 : $topicOptions['redirect_topic'],
 		);
 
 		call_integration_hook('integrate_before_create_topic', array(&$msgOptions, &$topicOptions, &$posterOptions, &$topic_columns, &$topic_parameters));
@@ -813,7 +794,7 @@ function createPost(&$msgOptions, &$topicOptions, &$posterOptions)
 			$topics_columns[] = 'locked = {int:locked}';
 
 		if ($topicOptions['sticky_mode'] !== null)
-			$topics_columns[] = 'is_sticky = {int:locked}';
+			$topics_columns[] = 'is_sticky = {int:is_sticky}';
 
 		call_integration_hook('integrate_before_modify_topic', array(&$topics_columns, &$update_parameters, &$msgOptions, &$topicOptions, &$posterOptions));
 
@@ -1018,24 +999,18 @@ function modifyPost(&$msgOptions, &$topicOptions, &$posterOptions)
 		$update_parameters
 	);
 
+	$attributes = array();
 	// Lock and or sticky the post.
-	if ($topicOptions['sticky_mode'] !== null || $topicOptions['lock_mode'] !== null || $topicOptions['poll'] !== null)
-	{
-		$db->query('', '
-			UPDATE {db_prefix}topics
-			SET
-				is_sticky = {raw:is_sticky},
-				locked = {raw:locked},
-				id_poll = {raw:id_poll}
-			WHERE id_topic = {int:id_topic}',
-			array(
-				'is_sticky' => $topicOptions['sticky_mode'] === null ? 'is_sticky' : (int) $topicOptions['sticky_mode'],
-				'locked' => $topicOptions['lock_mode'] === null ? 'locked' : (int) $topicOptions['lock_mode'],
-				'id_poll' => $topicOptions['poll'] === null ? 'id_poll' : (int) $topicOptions['poll'],
-				'id_topic' => $topicOptions['id'],
-			)
-		);
-	}
+	if ($topicOptions['sticky_mode'] !== null)
+		$attributes['is_sticky'] = $topicOptions['sticky_mode'];
+	if ($topicOptions['lock_mode'] !== null)
+		$attributes['locked'] = $topicOptions['lock_mode'];
+	if ($topicOptions['poll'] !== null)
+		$attributes['id_poll'] = $topicOptions['poll'];
+
+	// If anything to do, do it.
+	if (!empty($attributes))
+		setTopicAttribute($topicOptions['id'], $attributes);
 
 	// Mark the edited post as read.
 	if (!empty($topicOptions['mark_as_read']) && !$user_info['is_guest'])
@@ -1520,13 +1495,13 @@ function lastPost()
 	censorText($row['body']);
 
 	$row['body'] = strip_tags(strtr(parse_bbc($row['body'], $row['smileys_enabled']), array('<br />' => '&#10;')));
-	$row['body'] = shorten_text($row['body'], !empty($modSettings['lastpost_preview_characters']) ? $modSettings['lastpost_preview_characters'] : 128, true);
+	$row['body'] = Util::shorten_text($row['body'], !empty($modSettings['lastpost_preview_characters']) ? $modSettings['lastpost_preview_characters'] : 128, true);
 
 	// Send the data.
 	return array(
 		'topic' => $row['id_topic'],
 		'subject' => $row['subject'],
-		'short_subject' => shorten_text($row['subject'], $modSettings['subject_length']),
+		'short_subject' => Util::shorten_text($row['subject'], $modSettings['subject_length']),
 		'preview' => $row['body'],
 		'time' => standardTime($row['poster_time']),
 		'html_time' => htmlTime($row['poster_time']),
@@ -1544,41 +1519,46 @@ function lastPost()
  * - if editing is true, returns $message|$message[errors], else returns array($subject, $message)
  *
  * @package Posts
- * @param boolean $editing
+ * @param int|bool $editing
  * @param int|null|false $topic
  * @param string $first_subject
+ * @param int $msg_id
+ *
+ * @return false|mixed[]
  */
-function getFormMsgSubject($editing, $topic, $first_subject = '')
+function getFormMsgSubject($editing, $topic, $first_subject = '', $msg_id = 0)
 {
 	global $modSettings, $context;
 
 	$db = database();
 
-	if ($editing)
+	switch ($editing)
 	{
-		require_once(SUBSDIR . '/Messages.subs.php');
-
-		// Get the existing message.
-		$message = messageDetails((int) $_REQUEST['msg'], $topic);
-
-		// The message they were trying to edit was most likely deleted.
-		if ($message === false)
-			fatal_lang_error('no_message', false);
-
-		$errors = checkMessagePermissions($message['message']);
-
-		prepareMessageContext($message);
-
-		if (!empty($errors))
-			$message['errors'] = $errors;
-
-		return $message;
-	}
-	else
-	{
-		// Posting a quoted reply?
-		if ((!empty($topic) && !empty($_REQUEST['quote'])) || (!empty($modSettings['enableFollowup']) && !empty($_REQUEST['followup'])))
+		case 1:
 		{
+			require_once(SUBSDIR . '/Messages.subs.php');
+
+			// Get the existing message.
+			$message = messageDetails($msg_id, $topic);
+
+			// The message they were trying to edit was most likely deleted.
+			if ($message === false)
+				return false;
+
+			$errors = checkMessagePermissions($message['message']);
+
+			prepareMessageContext($message);
+
+			if (!empty($errors))
+				$message['errors'] = $errors;
+
+			return $message;
+		}
+		// Posting a quoted reply?
+		case 2:
+		{
+			$msg_id =  !empty($_REQUEST['quote']) ? (int) $_REQUEST['quote'] : (int) $_REQUEST['followup'];
+
 			// Make sure they _can_ quote this post, and if so get it.
 			$request = $db->query('', '
 				SELECT m.subject, IFNULL(mem.real_name, m.poster_name) AS poster_name, m.poster_time, m.body
@@ -1589,7 +1569,7 @@ function getFormMsgSubject($editing, $topic, $first_subject = '')
 					AND m.approved = {int:is_approved}') . '
 				LIMIT 1',
 				array(
-					'id_msg' => !empty($_REQUEST['quote']) ? (int) $_REQUEST['quote'] : (int) $_REQUEST['followup'],
+					'id_msg' => $msg_id,
 					'is_approved' => 1,
 				)
 			);
@@ -1598,71 +1578,54 @@ function getFormMsgSubject($editing, $topic, $first_subject = '')
 			list ($form_subject, $mname, $mdate, $form_message) = $db->fetch_row($request);
 			$db->free_result($request);
 
+			$response_prefix = response_prefix();
 			// Add 'Re: ' to the front of the quoted subject.
-			if (trim($context['response_prefix']) != '' && Util::strpos($form_subject, trim($context['response_prefix'])) !== 0)
-				$form_subject = $context['response_prefix'] . $form_subject;
+			if (trim($response_prefix) != '' && Util::strpos($form_subject, trim($response_prefix)) !== 0)
+				$form_subject = $response_prefix . $form_subject;
 
 			// Censor the message and subject.
 			censorText($form_message);
 			censorText($form_subject);
 
-			// But if it's in HTML world, turn them into htmlspecialchar's so they can be edited!
-			if (strpos($form_message, '[html]') !== false)
-			{
-				$parts = preg_split('~(\[/code\]|\[code(?:=[^\]]+)?\])~i', $form_message, -1, PREG_SPLIT_DELIM_CAPTURE);
-				for ($i = 0, $n = count($parts); $i < $n; $i++)
-				{
-					// It goes 0 = outside, 1 = begin tag, 2 = inside, 3 = close tag, repeat.
-					if ($i % 4 == 0)
-						$parts[$i] = preg_replace_callback('~\[html\](.+?)\[/html\]~is', 'getFormMsgSubject_br_callback', $parts[$i]);
-				}
-				$form_message = implode('', $parts);
-			}
-
-			$form_message = preg_replace('~<br ?/?' . '>~i', "\n", $form_message);
+			$form_message = un_preparsecode($form_message);
 
 			// Remove any nested quotes, if necessary.
 			if (!empty($modSettings['removeNestedQuotes']))
 				$form_message = preg_replace(array('~\n?\[quote.*?\].+?\[/quote\]\n?~is', '~^\n~', '~\[/quote\]~'), '', $form_message);
 
 			// Add a quote string on the front and end.
-			$form_message = '[quote author=' . $mname . ' link=topic=' . $topic . '.msg' . (int) $_REQUEST['quote'] . '#msg' . (int) $_REQUEST['quote'] . ' date=' . $mdate . ']' . "\n" . rtrim($form_message) . "\n" . '[/quote]';
+			$form_message = '[quote author=' . $mname . ' link=msg=' . (int) $msg_id . ' date=' . $mdate . ']' . "\n" . rtrim($form_message) . "\n" . '[/quote]';
+
+			break;
 		}
 		// Posting a reply without a quote?
-		elseif (!empty($topic) && empty($_REQUEST['quote']))
+		case 3:
 		{
 			// Get the first message's subject.
 			$form_subject = $first_subject;
+			$response_prefix = response_prefix();
 
 			// Add 'Re: ' to the front of the subject.
-			if (trim($context['response_prefix']) != '' && $form_subject != '' && Util::strpos($form_subject, trim($context['response_prefix'])) !== 0)
-				$form_subject = $context['response_prefix'] . $form_subject;
+			if (trim($response_prefix) != '' && $form_subject != '' && Util::strpos($form_subject, trim($response_prefix)) !== 0)
+				$form_subject = $response_prefix . $form_subject;
 
 			// Censor the subject.
 			censorText($form_subject);
 
 			$form_message = '';
+
+			break;
 		}
-		else
+		case 4:
 		{
 			$form_subject = isset($_GET['subject']) ? $_GET['subject'] : '';
 			$form_message = '';
+
+			break;
 		}
-
-		return array($form_subject, $form_message);
 	}
-}
 
-/**
- * Converts br's to entity safe versions <br /> => $lt;br /&gt;<br /> so messages
- * with bbc html tags can be edited
- *
- * @package Posts
- * @param string[] $matches
- */
-function getFormMsgSubject_br_callback($matches)
-{
-	return '[html]' . preg_replace('~<br\s?/?' . '>~i', '&lt;br /&gt;<br />', $matches[1]) . '[/html]';
+	return array($form_subject, $form_message);
 }
 
 /**

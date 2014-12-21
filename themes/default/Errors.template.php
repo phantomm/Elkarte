@@ -11,7 +11,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -33,7 +33,7 @@ function template_fatal_error()
 		</div>
 	</div>
 	<div class="centertext">
-		<a class="linkbutton" href="javascript:history.go(-1)">', $txt['back'], '</a>
+		<a class="linkbutton" href="javascript:window.location.assign(document.referrer);">', $txt['back'], '</a>
 	</div>';
 }
 

@@ -37,6 +37,7 @@ $txt['permissions_profile_do_delete'] = 'Delete';
 $txt['permissions_profile_copy_from'] = 'Copy Permissions From';
 
 $txt['permissions_includes_inherited'] = 'Inherited Groups';
+$txt['permissions_includes_inherited_from'] = 'Inherited from: ';
 
 $txt['permissions_all'] = 'all';
 $txt['permissions_none'] = 'none';
@@ -85,6 +86,8 @@ $txt['permissionname_karma_edit'] = 'Change other people\'s karma';
 $txt['permissionhelp_karma_edit'] = 'Karma is a feature that shows the popularity of a member. In order to use this feature, you need to have it enabled in \'Features and Options\'. This permission will allow a member group to cast a vote. This permission has no effect on guests.';
 $txt['permissionname_like_posts'] = 'Like other users\' posts';
 $txt['permissionhelp_like_posts'] = 'Likes is a feature that shows the popularity of a post. In order to use this feature, you need to have it enabled in \'Features and Options\'. This permission will allow a member group to like a post or unlike one they previously liked.  This permission has no effect on guests.';
+$txt['permissionname_like_posts_stats'] = 'See like posts stats';
+$txt['permissionhelp_like_posts_stats'] = 'This will allow users to see stats of posts liking';
 $txt['permissionname_disable_censor'] = 'Disable word censor';
 $txt['permissionhelp_disable_censor'] = 'Allows members the option to disable the word censor.';
 
@@ -155,12 +158,8 @@ $txt['permissionname_profile_remove'] = 'Delete account';
 $txt['permissionhelp_profile_remove'] = 'This permission allows a user to delete his account, when set to \'Own Account\'.';
 $txt['permissionname_profile_remove_own'] = 'Own account';
 $txt['permissionname_profile_remove_any'] = 'Any account';
-$txt['permissionname_profile_server_avatar'] = 'Select an avatar from the server';
-$txt['permissionhelp_profile_server_avatar'] = 'If enabled this will allow a user to select an avatar from the avatar collections installed on the server.';
-$txt['permissionname_profile_upload_avatar'] = 'Upload an avatar to the server';
-$txt['permissionhelp_profile_upload_avatar'] = 'This permission will allow a user to upload their personal avatar to the server.';
-$txt['permissionname_profile_remote_avatar'] = 'Choose a remotely stored avatar';
-$txt['permissionhelp_profile_remote_avatar'] = 'Because avatars might influence the page creation time negatively, it is possible to disallow certain member groups to use avatars from external servers.';
+$txt['permissionname_profile_set_avatar'] = 'Select an avatar';
+$txt['permissionhelp_profile_set_avatar'] = 'If enabled this will allow a user to select an avatar.';
 
 $txt['permissiongroup_general_board'] = 'General';
 $txt['permissionname_moderate_board'] = 'Moderate board';

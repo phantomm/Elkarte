@@ -14,7 +14,7 @@
  * copyright:	2011 Simple Machines (http://www.simplemachines.org)
  * license:  	BSD, See included LICENSE.TXT for terms and conditions.
  *
- * @version 1.0 Release Candidate 1
+ * @version 1.0
  *
  */
 
@@ -1763,7 +1763,7 @@ function sumRecentPosts()
 			'recycle_board' => $modSettings['recycle_board']
 		)
 	);
-	$result = $db->fetch_row($request);
+	list ($result) = $db->fetch_row($request);
 	$db->free_result($request);
 
 	return $result;
